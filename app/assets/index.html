@@ -251,6 +251,19 @@ nav.bottom button.active .pill{background:var(--primary-soft);color:var(--primar
 .gname{display:flex;align-items:center;gap:12px}
 .gname input{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--surface2);border-radius:12px;padding:10px 12px;outline:none;-webkit-user-select:text;user-select:text}
 .gname input:focus{border-color:var(--primary);background:var(--surface)}
+.switchrow{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:14px;padding:12px 14px;margin-bottom:14px;cursor:pointer}
+.switchrow>span{flex:1;font-weight:650}
+.switchrow small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.switchrow input{display:none}
+.switch{width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switchrow input:checked+.switch{background:var(--primary)}
+.switchrow input:checked+.switch::after{transform:translateX(18px)}
+.optlist.radio button{justify-content:space-between}
+.radio-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;position:relative}
+.optlist.radio button.sel .radio-dot{border-color:var(--primary)}
+.optlist.radio button.sel .radio-dot::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--primary)}
+.field input[type=password]{letter-spacing:.1em}
 .optlist button{width:100%;border:0;background:none;display:flex;align-items:center;gap:14px;padding:14px 4px;border-radius:12px;text-align:left;font-size:16px}
 .optlist button:active{background:var(--surface2)}
 .optlist button svg{width:24px;height:24px;color:var(--primary)}
@@ -409,6 +422,7 @@ function load(){
   if(!ROOT.profiles.some(p=>p.id===ROOT.active)) ROOT.active=ROOT.profiles[0].id;
   activateProfile(ROOT.active);
   if(dedupeKids()) saveNow();
+  applyRetention();
 }
 const activeProfile=()=>ROOT.profiles.find(p=>p.id===ROOT.active);
 function activateProfile(id){
@@ -520,7 +534,7 @@ function updatePill(dir){
 }
 function switchProfile(id,dir){
   if(id===ROOT.active) return;
-  saveNow(); activateProfile(id); saveNow();
+  saveNow(); activateProfile(id); applyRetention(); saveNow();
   S.filter="all"; S.mSearch=""; S.calSel=null;
   updatePill(dir||0); closeSheet(); render();
   showToast("Profil: "+activeProfile().name);
@@ -942,13 +956,15 @@ function openGroupNames(){
 }
 function openMasterMenu(){
   const wd=S.mWeekday, all=wd==="all";
-  openSheet(`<h2>Optionen</h2><div class="optlist">
+  const rm=DB.settings.retentionMonths||0;
+  openSheet(`<h2>Einstellungen</h2><div class="optlist">
     ${all?"":`<button id="oCopy">${I.copy}<span>Liste von ${WD_LONG[wd]} kopieren<small>Alle Kinder dieses Tages auf andere Tage übernehmen</small></span></button>
     <button id="oExpDay">${I.file}<span>Liste von ${WD_LONG[wd]} exportieren<small>Alle Kinder dieses Tages als Textdatei</small></span></button>`}
     <button id="oGroups">${I.edit}<span>Gruppen umbenennen<small>Eigene Namen für die Gruppen vergeben</small></span></button>
     <button id="oExpPersons">${I.users}<span>Gesamtliste aller Kinder exportieren<small>Jedes Kind einmal, mit seinen Wochentagen</small></span></button>
     <button id="oExpAll">${I.list}<span>Gesamtübersicht exportieren<small>Alle Kinderlisten von Montag bis Freitag als Textdatei</small></span></button>
-    <button id="oBackup">${I.backup}<span>Datensicherung erstellen<small>Alle Stammdaten & Anwesenheiten als Datei speichern</small></span></button>
+    <button id="oRetention">${I.trash}<span>Alte Einträge automatisch löschen<small>${rm?`Aktiv: Anwesenheiten älter als ${retLabel(rm)} werden gelöscht`:"Aus"}</small></span></button>
+    <button id="oBackup">${I.backup}<span>Datensicherung erstellen<small>Alle Stammdaten & Anwesenheiten als Datei speichern, optional mit Passwort</small></span></button>
     <button id="oRestore">${I.save}<span>Datensicherung wiederherstellen<small>Eine zuvor gespeicherte Sicherung laden</small></span></button>
   </div>`);
   $("#oGroups").onclick=()=>{haptic("light");openGroupNames()};
@@ -956,10 +972,8 @@ function openMasterMenu(){
   if(!all) $("#oCopy").onclick=()=>{haptic("tick");openCopyDay(wd)};
   if(!all) $("#oExpDay").onclick=()=>{haptic("light");openTextSheet(`Liste · ${WD_LONG[wd]}`,buildRosterText([wd]),`Kinderliste_${WD_LONG[wd]}.txt`)};
   $("#oExpAll").onclick=()=>{haptic("light");openTextSheet("Gesamtübersicht",buildRosterText([1,2,3,4,5]),`Kinderlisten_Gesamtuebersicht_${iso(new Date())}.txt`)};
-  $("#oBackup").onclick=()=>{haptic("light");saveNow();
-    const name="Anwesenheit_Sicherung_"+iso(new Date())+".json";
-    if(N&&N.saveFile) N.saveFile(name,JSON.stringify(DB,null,1),"application/json"); else downloadFallback(name,JSON.stringify(DB,null,1));
-    closeSheet()};
+  $("#oRetention").onclick=()=>{haptic("light");openRetention()};
+  $("#oBackup").onclick=()=>{haptic("light");openBackup()};
   $("#oRestore").onclick=()=>{haptic("light");closeSheet();
     if(N&&N.openFile) N.openFile(); else {const i=document.createElement("input");i.type="file";i.accept=".json,application/json";i.onchange=()=>{const r=new FileReader();r.onload=()=>window.onFileOpened(r.result);r.readAsText(i.files[0])};i.click()}};
 }
@@ -975,13 +989,102 @@ function openCopyDay(from){
     save();haptic("success");closeSheet();renderMaster();showToast(`${n} ${n===1?"Kind":"Kinder"} kopiert`);
   };
 }
+/* ---------- Retention (automatic deletion of old attendance entries) ---------- */
+const RET_OPTIONS=[0,1,3,6,12,24];
+const retLabel=m=>m===1?"1 Monat":m+" Monate";
+function retCutoff(m){const t=new Date();t.setHours(0,0,0,0);return iso(new Date(t.getFullYear(),t.getMonth()-m,t.getDate()))}
+const oldRecordKeys=m=>{const c=retCutoff(m);return Object.keys(DB.records).filter(k=>k<c)};
+/** Deletes attendance entries older than the configured period; master data is never touched. */
+function applyRetention(){
+  const m=DB.settings&&DB.settings.retentionMonths; if(!m) return 0;
+  const old=oldRecordKeys(m); old.forEach(k=>delete DB.records[k]); if(old.length) saveNow(); return old.length;
+}
+function openRetention(){
+  const cur=DB.settings.retentionMonths||0;
+  openSheet(`<h2>Alte Einträge automatisch löschen</h2>
+    <p class="hint" style="margin:-6px 0 12px">Erfasste Anwesenheiten, die älter sind als der gewählte Zeitraum, werden automatisch gelöscht. Stammdaten (Kinder, Gruppen) bleiben erhalten. Gilt für das Profil „${esc(activeProfile().name)}“.</p>
+    <div class="optlist radio">${RET_OPTIONS.map(m=>`<button data-m="${m}" class="${m===cur?"sel":""}"><span>${m?"Älter als "+retLabel(m):"Aus – nichts automatisch löschen"}${m?`<small>${(n=>n?n+(n===1?" erfasster Tag wäre":" erfasste Tage wären")+" jetzt betroffen":"Derzeit nichts betroffen")(oldRecordKeys(m).length)}</small>`:""}</span><i class="radio-dot"></i></button>`).join("")}</div>`);
+  document.querySelectorAll(".optlist.radio button").forEach(b=>b.onclick=()=>{
+    const m=+b.dataset.m, n=m?oldRecordKeys(m).length:0;
+    const apply=()=>{DB.settings.retentionMonths=m;const del=applyRetention();save();haptic("success");closeSheet();
+      showToast(m?`Automatisches Löschen aktiv (älter als ${retLabel(m)})${del?` – ${del} ${del===1?"Tag":"Tage"} gelöscht`:""}`:"Automatisches Löschen ausgeschaltet");render()};
+    if(n){haptic("warn");confirmSheet(`${n} ${n===1?"erfassten Tag":"erfasste Tage"} löschen?`,`Mit dieser Einstellung werden alle Anwesenheiten vor dem ${fmtDate(fromIso(retCutoff(m)))} jetzt und künftig automatisch gelöscht. Das lässt sich nicht rückgängig machen.`,"Aktivieren & löschen",apply)}
+    else{haptic("tick");apply()}
+  });
+}
+
+/* ---------- Backup (optionally password-encrypted with AES-GCM, key from PBKDF2-SHA256) ---------- */
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const PBKDF2_ITER=310000;
+async function pwKey(pw,salt,iter){
+  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",hash:"SHA-256",salt,iterations:iter},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encryptBackup(json,pw){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},await pwKey(pw,salt,PBKDF2_ITER),new TextEncoder().encode(json));
+  return JSON.stringify({app:"grupp-checkan",type:"backup-encrypted",v:1,kdf:{name:"PBKDF2",hash:"SHA-256",iter:PBKDF2_ITER,salt:b64(salt)},cipher:"AES-GCM",iv:b64(iv),data:b64(ct)});
+}
+async function decryptBackup(o,pw){
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(o.iv)},await pwKey(pw,unb64(o.kdf.salt),o.kdf.iter),unb64(o.data));
+  return new TextDecoder().decode(pt);
+}
+const cryptoOk=()=>!!(window.crypto&&crypto.subtle);
+function openBackup(){
+  saveNow();
+  openSheet(`<h2>Datensicherung erstellen</h2>
+    <p class="hint" style="margin:-6px 0 14px">Sichert Stammdaten, Gruppen und Anwesenheiten des Profils „${esc(activeProfile().name)}“ in eine Datei.</p>
+    <label class="switchrow"><span>Mit Passwort verschlüsseln<small>Die Datei ist ohne Passwort nicht lesbar</small></span><input type="checkbox" id="bEnc"><i class="switch"></i></label>
+    <div id="bPw" style="display:none">
+      <div class="field"><label>Passwort</label><input type="password" id="bPw1" autocomplete="new-password" placeholder="mindestens 6 Zeichen"></div>
+      <div class="field"><label>Passwort wiederholen</label><input type="password" id="bPw2" autocomplete="new-password"></div>
+      <div class="hint" style="margin:-6px 0 14px">Wichtig: Ohne dieses Passwort lässt sich die Sicherung nicht wiederherstellen – es kann nicht zurückgesetzt werden.</div>
+    </div>
+    <div class="actions"><button class="btn ghost" id="bCancel">Abbrechen</button><button class="btn" id="bSave">${I.save} Speichern</button></div>`);
+  $("#bEnc").onchange=()=>{haptic("tick");$("#bPw").style.display=$("#bEnc").checked?"":"none";if($("#bEnc").checked)setTimeout(()=>$("#bPw1").focus(),50)};
+  $("#bCancel").onclick=()=>{haptic("tick");closeSheet()};
+  $("#bSave").onclick=async()=>{
+    const enc=$("#bEnc").checked, base="Anwesenheit_Sicherung_"+iso(new Date())+"_"+activeProfile().name.replace(/[^\wäöüÄÖÜß-]+/g,"_");
+    let text=JSON.stringify(DB,null,1), name=base+".json";
+    if(enc){
+      const p1=$("#bPw1").value, p2=$("#bPw2").value;
+      if(p1.length<6){haptic("warn");showToast("Passwort: mindestens 6 Zeichen");$("#bPw1").focus();return}
+      if(p1!==p2){haptic("warn");showToast("Die Passwörter stimmen nicht überein");$("#bPw2").focus();return}
+      if(!cryptoOk()){haptic("warn");showToast("Verschlüsselung wird auf diesem Gerät nicht unterstützt");return}
+      $("#bSave").disabled=true; $("#bSave").textContent="Verschlüssele …";
+      text=await encryptBackup(JSON.stringify(DB),p1); name=base+"_verschluesselt.json";
+    }
+    closeSheet();
+    if(N&&N.saveFile) N.saveFile(name,text,"application/json"); else downloadFallback(name,text);
+  };
+}
+function askBackupPassword(o){
+  openSheet(`<h2>Sicherung entschlüsseln</h2>
+    <p class="hint" style="margin:-6px 0 14px">Diese Sicherung ist mit einem Passwort geschützt.</p>
+    <div class="field"><label>Passwort</label><input type="password" id="rPw" autocomplete="current-password" enterkeyhint="done"></div>
+    <div class="actions"><button class="btn ghost" id="rCancel">Abbrechen</button><button class="btn" id="rOk">Entschlüsseln</button></div>`);
+  setTimeout(()=>$("#rPw").focus(),320);
+  $("#rCancel").onclick=()=>{haptic("tick");closeSheet()};
+  const go=async()=>{
+    if(!cryptoOk()){haptic("warn");showToast("Verschlüsselung wird auf diesem Gerät nicht unterstützt");return}
+    $("#rOk").disabled=true; $("#rOk").textContent="Prüfe …";
+    try{ const txt=await decryptBackup(o,$("#rPw").value); restoreFromText(txt); }
+    catch(e){ haptic("warn"); showToast("Falsches Passwort"); $("#rOk").disabled=false; $("#rOk").textContent="Entschlüsseln"; $("#rPw").select(); }
+  };
+  $("#rOk").onclick=go; $("#rPw").onkeydown=e=>{if(e.key==="Enter")go()};
+}
 window.onFileOpened=function(text){
+  try{ const o=JSON.parse(text); if(o&&o.type==="backup-encrypted"&&o.data){askBackupPassword(o);return} }catch(e){}
+  restoreFromText(text);
+};
+function restoreFromText(text){
   try{
     const d=JSON.parse(text); if(!d||!Array.isArray(d.kids)||typeof d.records!=="object") throw 0;
     confirmSheet("Sicherung wiederherstellen?",`Die aktuellen Daten werden durch die Sicherung ersetzt (${d.kids.length} Einträge in den Stammdaten, ${Object.keys(d.records).length} erfasste Tage).`,"Wiederherstellen",()=>{
       DB=Object.assign({version:1,kids:[],records:{},settings:{}},d);if(!DB.settings)DB.settings={};dedupeKids();saveNow();haptic("success");closeSheet();render();showToast("Sicherung wiederhergestellt")});
   }catch(e){haptic("warn");showToast("Datei ist keine gültige Sicherung")}
-};
+}
 
 /* ---------- Export ---------- */
 function padR(s,n){s=String(s);const len=[...s].length;return len>=n?[...s].slice(0,n).join(""):s+" ".repeat(n-len)}
@@ -1161,7 +1264,7 @@ window.onBackPressed=function(){
 };
 window.setTheme=function(dark){document.documentElement.dataset.theme=dark?"dark":"light"};
 // Auto-refresh when app is resumed on a new day
-window.onAppResume=function(){const tw=todayWork();if(S.view==="today"&&iso(S.date)!==iso(tw.date)&&S.lastAutoDate!==iso(tw.date)){S.date=tw.date;S.weekendHint=tw.weekend;S.lastAutoDate=iso(tw.date);render()}};
+window.onAppResume=function(){applyRetention();const tw=todayWork();if(S.view==="today"&&iso(S.date)!==iso(tw.date)&&S.lastAutoDate!==iso(tw.date)){S.date=tw.date;S.weekendHint=tw.weekend;S.lastAutoDate=iso(tw.date);render()}};
 S.lastAutoDate=iso(todayWork().date);
 
 if(!N&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches) setTheme(true);

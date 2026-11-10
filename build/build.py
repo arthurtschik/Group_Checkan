@@ -16,7 +16,7 @@ OUT = os.path.join(ROOT, "out")
 GEN = os.path.join(OUT, "gen")
 
 PKG = "de.anwesenheit.app"
-VERSION_CODE, VERSION_NAME = 12, "2.1"
+VERSION_CODE, VERSION_NAME = 13, "2.2"
 MIN_SDK, TARGET_SDK = 24, 34
 
 # android attribute ids (from android.R.attr)
@@ -24,11 +24,13 @@ R = dict(theme=0x01010000, label=0x01010001, icon=0x01010002, name=0x01010003, e
          launchMode=0x0101001d, screenOrientation=0x0101001e, configChanges=0x0101001f,
          minSdkVersion=0x0101020c, versionCode=0x0101021b, versionName=0x0101021c,
          windowSoftInputMode=0x0101022b, targetSdkVersion=0x01010270, allowBackup=0x01010280,
-         hardwareAccelerated=0x010102d3, drawable=0x01010199, roundIcon=0x0101052c)
+         hardwareAccelerated=0x010102d3, drawable=0x01010199, roundIcon=0x0101052c,
+         dataExtractionRules=0x0101063e)
 THEME_MATERIAL_LIGHT_NOACTIONBAR = 0x01030240
 
 # app resource ids (must match encode_arsc layout below)
 DRAWABLE_FG, DRAWABLE_BG, MIPMAP_LAUNCHER = 0x7f010000, 0x7f010001, 0x7f020000
+XML_EXTRACTION_RULES = 0x7f030000
 
 
 def run(cmd):
@@ -50,7 +52,8 @@ def manifest():
             a("icon", T_REF, MIPMAP_LAUNCHER, R["icon"]),
             a("roundIcon", T_REF, MIPMAP_LAUNCHER, R["roundIcon"]),
             a("theme", T_REF, THEME_MATERIAL_LIGHT_NOACTIONBAR, R["theme"]),
-            a("allowBackup", T_BOOL, True, R["allowBackup"]),
+            a("allowBackup", T_BOOL, False, R["allowBackup"]),             # no cloud/adb backup
+            a("dataExtractionRules", T_REF, XML_EXTRACTION_RULES, R["dataExtractionRules"]),  # Android 12+: also no device transfer
             a("hardwareAccelerated", T_BOOL, True, R["hardwareAccelerated"]),
         ], [
             Node("activity", [
@@ -67,6 +70,13 @@ def manifest():
             ])
         ])
     ])
+
+
+def extraction_rules():
+    """Excludes all app data from cloud backup and device-to-device transfer (Android 12+)."""
+    domains = ["root", "file", "database", "sharedpref", "external"]
+    ex = lambda: [Node("exclude", [a("domain", T_STRING, d), a("path", T_STRING, ".")]) for d in domains]
+    return Node("data-extraction-rules", [], [Node("cloud-backup", [], ex()), Node("device-transfer", [], ex())])
 
 
 def adaptive_icon():
@@ -98,6 +108,7 @@ def main():
     files = {
         "AndroidManifest.xml": encode_xml(manifest()),
         "res/mipmap-anydpi-v26/ic_launcher.xml": encode_xml(adaptive_icon()),
+        "res/xml/data_extraction_rules.xml": encode_xml(extraction_rules()),
     }
     for name, path in [("res/drawable-xxxhdpi-v4/ic_launcher_fg.png", "ic_launcher_fg.png"),
                        ("res/drawable-xxxhdpi-v4/ic_launcher_bg.png", "ic_launcher_bg.png"),
@@ -111,6 +122,8 @@ def main():
         ("mipmap", ["ic_launcher"], CONFIG_DENSITY | CONFIG_VERSION,
          [(config(density=640, sdk=4), {0: "res/mipmap-xxxhdpi-v4/ic_launcher.png"}),
           (config(density=0xFFFE, sdk=26), {0: "res/mipmap-anydpi-v26/ic_launcher.xml"})]),
+        ("xml", ["data_extraction_rules"], 0,
+         [(config(), {0: "res/xml/data_extraction_rules.xml"})]),
     ])
     files["classes.dex"] = open(os.path.join(GEN, "classes.dex"), "rb").read()
     asset_root = os.path.join(ROOT, "app", "assets")

@@ -21,6 +21,18 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
 - **Profile** – getrennte Datenbestände; Pille oben links: antippen = verwalten, nach unten/oben wischen = wechseln
 - Haptisches Feedback, heller und dunkler Modus
 
+## Datenschutz & Sicherheit
+
+- **Kein Internet:** Die App hat keine Internet-Berechtigung und kann keine Daten senden.
+- **Verschlüsselte Daten:** Die Datendatei wird mit AES-256-GCM verschlüsselt. Der Schlüssel liegt im
+  Android-Keystore (wo vorhanden im Sicherheitschip) und kann das Gerät nicht verlassen – eine kopierte
+  Datei ist unlesbar. Für Nutzer ändert sich nichts (kein Passwort nötig).
+- **Kein Cloud-Backup, keine Geräteübertragung:** Die Daten werden nicht in Google-Backups oder beim
+  Gerätewechsel übernommen. Für den Umzug die eigene Datensicherung verwenden.
+- **Datensicherung optional mit Passwort** (AES-256-GCM, Schlüssel per PBKDF2-SHA256 mit 310.000 Runden).
+- **Alte Einträge automatisch löschen** (optional, je Profil): nach 1, 3, 6, 12 oder 24 Monaten.
+- Text-Exporte sind bewusst unverschlüsselt – beim Weitergeben auf den Empfänger achten.
+
 ## Aufbau
 
 | Pfad | Inhalt |

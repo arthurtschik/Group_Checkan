@@ -27,6 +27,16 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.security.KeyStore;
+import java.util.Arrays;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 
 public class MainActivity extends Activity {
     private static final int REQ_SAVE = 41;
@@ -172,6 +182,71 @@ public class MainActivity extends Activity {
         return bos.toByteArray();
     }
 
+    /* ---------- Encryption at rest ----------
+     * The data file is encrypted with AES-256-GCM. The key is created once in the Android Keystore
+     * (hardware-backed where available) and can never be exported, so a copied file is unreadable.
+     * File format: "GCK1" | iv length (1 byte) | iv | ciphertext+tag
+     */
+    private static final byte[] MAGIC = {'G', 'C', 'K', '1'};
+    private static final String KEY_ALIAS = "grupp_checkan_data_v1";
+
+    private static boolean isEncrypted(byte[] raw) {
+        return raw.length > 5 && Arrays.equals(Arrays.copyOf(raw, 4), MAGIC);
+    }
+
+    private SecretKey dataKey() throws Exception {
+        KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+        ks.load(null);
+        if (ks.containsAlias(KEY_ALIAS)) return (SecretKey) ks.getKey(KEY_ALIAS, null);
+        KeyGenerator kg = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        kg.init(new KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .build());
+        return kg.generateKey();
+    }
+
+    private byte[] encrypt(byte[] plain) throws Exception {
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+        c.init(Cipher.ENCRYPT_MODE, dataKey());
+        byte[] iv = c.getIV(), ct = c.doFinal(plain);
+        byte[] out = new byte[5 + iv.length + ct.length];
+        System.arraycopy(MAGIC, 0, out, 0, 4);
+        out[4] = (byte) iv.length;
+        System.arraycopy(iv, 0, out, 5, iv.length);
+        System.arraycopy(ct, 0, out, 5 + iv.length, ct.length);
+        return out;
+    }
+
+    private byte[] decrypt(byte[] raw) throws Exception {
+        int ivLen = raw[4] & 0xff;
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+        c.init(Cipher.DECRYPT_MODE, dataKey(), new GCMParameterSpec(128, Arrays.copyOfRange(raw, 5, 5 + ivLen)));
+        return c.doFinal(raw, 5 + ivLen, raw.length - 5 - ivLen);
+    }
+
+    /** Atomically writes the data file, encrypted. Falls back to plain text only if the keystore is broken, so no data is lost. */
+    private void writeData(String json) {
+        byte[] bytes = json.getBytes(UTF8);
+        try {
+            bytes = encrypt(bytes);
+        } catch (Exception ignored) {
+        }
+        try {
+            File tmp = new File(getFilesDir(), "anwesenheit.json.tmp");
+            FileOutputStream out = new FileOutputStream(tmp);
+            out.write(bytes);
+            out.getFD().sync();
+            out.close();
+            if (!tmp.renameTo(dataFile())) {
+                dataFile().delete();
+                tmp.renameTo(dataFile());
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private File dataFile() {
         return new File(getFilesDir(), "anwesenheit.json");
     }
@@ -180,33 +255,37 @@ public class MainActivity extends Activity {
     public class Bridge {
         @JavascriptInterface
         public String loadData() {
-            try {
+            synchronized (MainActivity.this) {
                 File f = dataFile();
                 if (!f.exists()) return null;
-                FileInputStream in = new FileInputStream(f);
-                String s = new String(readAll(in), UTF8);
-                in.close();
-                return s;
-            } catch (Exception e) {
-                return null;
+                byte[] raw;
+                try {
+                    FileInputStream in = new FileInputStream(f);
+                    raw = readAll(in);
+                    in.close();
+                } catch (Exception e) {
+                    return null;
+                }
+                if (!isEncrypted(raw)) {
+                    // data from an older version: hand it over and store it encrypted right away
+                    String s = new String(raw, UTF8);
+                    writeData(s);
+                    return s;
+                }
+                try {
+                    return new String(decrypt(raw), UTF8);
+                } catch (Exception e) {
+                    // key no longer available (e.g. app data moved to another device): keep the file aside, start empty
+                    f.renameTo(new File(getFilesDir(), "anwesenheit.unreadable-" + System.currentTimeMillis()));
+                    return null;
+                }
             }
         }
 
         @JavascriptInterface
         public void saveData(String json) {
             synchronized (MainActivity.this) {
-                try {
-                    File tmp = new File(getFilesDir(), "anwesenheit.json.tmp");
-                    FileOutputStream out = new FileOutputStream(tmp);
-                    out.write(json.getBytes(UTF8));
-                    out.getFD().sync();
-                    out.close();
-                    if (!tmp.renameTo(dataFile())) {
-                        dataFile().delete();
-                        tmp.renameTo(dataFile());
-                    }
-                } catch (Exception ignored) {
-                }
+                writeData(json);
             }
         }
 
