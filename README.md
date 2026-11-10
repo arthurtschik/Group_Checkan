@@ -60,3 +60,16 @@ Ergebnis: `Anwesenheit.apk` im Projektordner.
 ausgeschlossen. Bewahre ihn sicher auf: Updates lassen sich nur mit demselben Schlüssel über die
 installierte App installieren – mit einem anderen Schlüssel müsste die App neu installiert werden und die
 Daten auf dem Gerät gingen verloren. Fehlt die Datei, erzeugt der Build einen neuen Schlüssel.
+
+## Hinweis & Haftungsausschluss
+
+Grupp-Checkan ist ein **privates Hobbyprojekt** und wird ohne jede Gewährleistung zur Verfügung gestellt.
+Es wird **keine Haftung für Datenverluste** oder sonstige Schäden übernommen, die durch die Nutzung der App
+entstehen.
+
+Die App verarbeitet personenbezogene Daten von Kindern. Bitte nutze sie verantwortungsvoll: Gehe sorgsam
+mit den Daten um, gib Exporte nur an berechtigte Personen weiter, kläre den Einsatz mit deinem Träger bzw.
+deiner Einrichtung (Datenschutz/DSGVO), schütze dein Handy mit einer Displaysperre und erstelle regelmäßig
+Datensicherungen. Die Verantwortung für den Umgang mit den Daten liegt bei den Nutzerinnen und Nutzern.
+
+Release Notes der einzelnen Versionen: [`docs/releases/`](docs/releases/)
