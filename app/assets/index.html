@@ -264,6 +264,61 @@ nav.bottom button.active .pill{background:var(--primary-soft);color:var(--primar
 .optlist.radio button.sel .radio-dot{border-color:var(--primary)}
 .optlist.radio button.sel .radio-dot::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--primary)}
 .field input[type=password]{letter-spacing:.1em}
+.navdot{position:absolute;top:3px;right:12px;width:9px;height:9px;border-radius:50%;background:var(--sick);box-shadow:0 0 0 2px var(--surface);display:none}
+.navdot.show{display:block}
+nav.bottom button .pill{position:relative}
+.scard{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:4px;overflow:hidden}
+#updCard{padding:14px}
+.srow{width:100%;border:0;background:none;display:flex;align-items:center;gap:14px;padding:12px 10px;border-radius:12px;text-align:left}
+.srow:active{background:var(--surface2)}
+.srow>svg:first-child{width:22px;height:22px;color:var(--primary);flex:none}
+.srow>svg:last-child{width:18px;height:18px;color:var(--muted);flex:none}
+.srow span{flex:1;min-width:0}
+.srow b{display:block;font-weight:650}
+.srow small{display:block;color:var(--muted);font-size:13px;margin-top:1px}
+.uhead{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.uhead>div{flex:1}
+.uhead small{display:block;color:var(--muted);font-size:13px}
+.btn.small{padding:8px 14px;font-size:14px}
+.btn:disabled{opacity:.5}
+.ustat{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14.5px;margin:6px 0 10px}
+.ustat svg{width:20px;height:20px;flex:none}
+.ustat.ok{color:var(--ok)} .ustat.err{color:var(--sick)} .ustat.new{color:var(--primary)}
+.unotes{background:var(--surface2);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.45;max-height:220px;overflow-y:auto;margin-bottom:12px;-webkit-user-select:text;user-select:text}
+.unotes .mh{font-weight:750;margin:8px 0 2px}
+.unotes .mh:first-child{margin-top:0}
+.unotes .mli{padding-left:14px;position:relative}
+.unotes .mli:not(.num)::before{content:"•";position:absolute;left:2px}
+.unotes .mq{color:var(--muted)}
+.unotes .mp{margin:0 0 4px}
+.ubar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-bottom:6px}
+.ubar i{display:block;height:100%;background:var(--primary);transition:width .2s}
+.switchrow.flat{background:none;padding:12px 0 4px;margin:6px 0 0;border-top:1px solid var(--line);border-radius:0}
+.linkbtn{border:0;background:none;color:var(--primary);font-weight:650;font-size:14px;display:flex;align-items:center;gap:4px;padding:8px 0 0}
+.linkbtn svg{width:16px;height:16px}
+.spin{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--primary);display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legal{font-size:14px;line-height:1.5;-webkit-user-select:text;user-select:text}
+.legal h2{font-size:19px;margin:0 0 2px}
+.legal h3{font-size:15px;margin:16px 0 4px}
+.legal p{margin:0 0 6px}
+.legal ul{margin:4px 0 6px;padding-left:20px}
+.legal hr{border:0;border-top:1px solid var(--line);margin:22px 0}
+.about{text-align:center;margin-bottom:12px}
+.about h2{margin:10px 0 2px}
+.about p{margin:2px 0}
+.abadge{width:64px;height:64px;border-radius:18px;margin:0 auto;background:linear-gradient(135deg,#5b7bff,#2d45d8);color:#fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(59,91,253,.35)}
+.abadge svg{width:36px;height:36px}
+.consent{position:fixed;inset:0;z-index:15;background:var(--bg);display:flex;flex-direction:column;transition:opacity .3s,transform .3s}
+.consent.hide{opacity:0;transform:translateY(20px)}
+.cwrap{flex:1;overflow-y:auto;padding:24px 18px 12px}
+.chead{text-align:center;margin-bottom:18px}
+.chead h1{font-size:22px;margin:12px 0 4px}
+.chead p{color:var(--muted);margin:0}
+.consent .legal{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.cfoot{background:var(--surface);border-top:1px solid var(--line);padding:12px 18px calc(14px + env(safe-area-inset-bottom))}
+.ccheck{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin-bottom:10px;line-height:1.35}
+.ccheck input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--primary)}
 .optlist button{width:100%;border:0;background:none;display:flex;align-items:center;gap:14px;padding:14px 4px;border-radius:12px;text-align:left;font-size:16px}
 .optlist button:active{background:var(--surface2)}
 .optlist button svg{width:24px;height:24px;color:var(--primary)}
@@ -292,6 +347,7 @@ nav.bottom button.active .pill{background:var(--primary-soft);color:var(--primar
     <button data-view="today"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></span>Anwesenheit</button>
     <button data-view="calendar"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span>Kalender</button>
     <button data-view="master"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.7 2.5 3 5.2"/></svg></span>Stammdaten</button>
+    <button data-view="settings"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><i class="navdot" id="updDot"></i></span>Einstellungen</button>
   </nav>
 </div>
 <div class="scrim" id="scrim"></div>
@@ -420,6 +476,7 @@ function load(){
   if(parsed&&Array.isArray(parsed.profiles)&&parsed.profiles.length) ROOT=parsed;
   else ROOT={format:2,active:null,profiles:[{id:uid(),name:"Profil 1",color:0,db:parsed&&parsed.kids?parsed:emptyDB()}]};
   if(!ROOT.profiles.some(p=>p.id===ROOT.active)) ROOT.active=ROOT.profiles[0].id;
+  if(!ROOT.settings) ROOT.settings={};
   activateProfile(ROOT.active);
   if(dedupeKids()) saveNow();
   applyRetention();
@@ -514,6 +571,182 @@ function counts(d){
 /* ---------- Rendering helpers ---------- */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+/* ---------- Settings tab ---------- */
+const APP_VERSION=(()=>{try{return (N&&N.version&&N.version())||"dev"}catch(e){return "dev"}})();
+const REPO_URL="https://github.com/arthurtschik/Grupp-Checkan";
+const TERMS_VERSION=1;
+const verParts=v=>String(v||"").replace(/^[^\d]*/,"").split(/[.\-]/).map(x=>parseInt(x,10)||0);
+function isNewer(a,b){const x=verParts(a),y=verParts(b);for(let i=0;i<Math.max(x.length,y.length);i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)>(y[i]||0)}return false}
+const UPD={state:"idle",info:null,pct:0,err:""};   // idle|checking|current|available|downloading|ready|permission|error
+const setRow=(id,icon,title,sub,extra)=>`<button class="srow" id="${id}">${icon}<span><b>${title}</b>${sub?`<small>${sub}</small>`:""}</span>${extra||I.right}</button>`;
+function renderSettings(){
+  setHeader("Einstellungen",`Grupp-Checkan · Version ${APP_VERSION}`,"");
+  const rm=DB.settings.retentionMonths||0, gn=DB.settings.groupNames||{}, renamed=Object.keys(gn).length;
+  let h=`<div class="section-h">App-Update</div><div class="scard" id="updCard">${updateCardHtml()}</div>
+    <div class="section-h">Profil „${esc(activeProfile().name)}“</div><div class="scard">
+      ${setRow("sGroups",I.edit,"Gruppen umbenennen",renamed?`${renamed} ${renamed===1?"Gruppe":"Gruppen"} umbenannt`:"Standardnamen")}
+      ${setRow("sRetention",I.trash,"Alte Einträge automatisch löschen",rm?`Aktiv: älter als ${retLabel(rm)}`:"Aus")}
+      ${setRow("sBackup",I.backup,"Datensicherung erstellen","Optional mit Passwort")}
+      ${setRow("sRestore",I.save,"Datensicherung wiederherstellen","")}
+      ${setRow("sProfiles",I.users,"Profile verwalten",`${ROOT.profiles.length} ${ROOT.profiles.length===1?"Profil":"Profile"}`)}
+    </div>
+    <div class="section-h">Rechtliches & Info</div><div class="scard">
+      ${setRow("sTerms",I.file,"Nutzungsbedingungen & Haftung","")}
+      ${setRow("sPrivacy",I.info,"Datenschutzhinweis","")}
+      ${setRow("sAbout",I.list,"Über Grupp-Checkan",`Version ${APP_VERSION}`)}
+    </div><div style="height:16px"></div>`;
+  $("#main").innerHTML=h;
+  bindUpdateCard();
+  $("#sGroups").onclick=()=>{haptic("light");openGroupNames()};
+  $("#sRetention").onclick=()=>{haptic("light");openRetention()};
+  $("#sBackup").onclick=()=>{haptic("light");openBackup()};
+  $("#sRestore").onclick=()=>{haptic("light");
+    if(N&&N.openFile) N.openFile(); else {const i=document.createElement("input");i.type="file";i.accept=".json,application/json";i.onchange=()=>{const r=new FileReader();r.onload=()=>window.onFileOpened(r.result);r.readAsText(i.files[0])};i.click()}};
+  $("#sProfiles").onclick=()=>{haptic("light");openProfiles()};
+  $("#sTerms").onclick=()=>{haptic("light");openSheet(`<div class="legal">${TERMS_HTML}</div><div class="actions"><button class="btn block" onclick="closeSheet()">Schließen</button></div>`)};
+  $("#sPrivacy").onclick=()=>{haptic("light");openSheet(`<div class="legal">${PRIVACY_HTML}</div><div class="actions"><button class="btn block" onclick="closeSheet()">Schließen</button></div>`)};
+  $("#sAbout").onclick=()=>{haptic("light");openAbout()};
+}
+function updateCardHtml(){
+  const auto=!!ROOT.settings.autoUpdate, i=UPD.info, last=ROOT.settings.lastUpdateCheck;
+  let status="", body="", btn="";
+  switch(UPD.state){
+    case "checking": status=`<span class="ustat">${spinner()} Suche nach Updates …</span>`; break;
+    case "current": status=`<span class="ustat ok">${I.check} Du hast die neueste Version.</span>`; break;
+    case "error": status=`<span class="ustat err">${I.info} ${esc(UPD.err)}</span>`; break;
+    case "available": case "downloading": case "ready": case "permission":
+      status=`<span class="ustat new">${I.save} Neue Version ${esc(i.tag.replace(/^v/,""))} verfügbar</span>`;
+      body=`<div class="unotes">${mdLite(i.body)}</div>`;
+      if(UPD.state==="downloading") btn=`<div class="ubar"><i style="width:${Math.max(3,UPD.pct)}%"></i></div><div class="hint">Lade herunter … ${UPD.pct>=0?UPD.pct+" %":""}</div>`;
+      else if(UPD.state==="permission") btn=`<div class="hint" style="margin-bottom:8px">Bitte erlaube in den Android-Einstellungen „Apps aus dieser Quelle installieren“ und tippe dann erneut.</div><button class="btn block" id="uInstall">${I.save} Jetzt installieren</button>`;
+      else if(UPD.state==="ready") btn=`<button class="btn block" id="uInstall">${I.save} Jetzt installieren</button>`;
+      else btn=i.apk?`<button class="btn block" id="uGet">${I.save} Update installieren</button>${i.size?`<div class="hint" style="text-align:center;margin-top:6px">Download: ${Math.round(i.size/1024)} KB von GitHub</div>`:""}`:`<div class="hint">Im Release fehlt die APK-Datei.</div>`;
+      break;
+  }
+  return `<div class="uhead"><div><b>Installiert: ${esc(APP_VERSION)}</b><small>${last?"Zuletzt geprüft: "+fmtDate(new Date(last))+" "+fmtTime(new Date(last)):"Noch nicht geprüft"}</small></div>
+      <button class="btn ghost small" id="uCheck" ${UPD.state==="checking"||UPD.state==="downloading"?"disabled":""}>Prüfen</button></div>
+    ${status}${body}${btn}
+    <label class="switchrow flat"><span>Automatisch nach Updates suchen<small>Höchstens einmal täglich beim Öffnen der App</small></span><input type="checkbox" id="uAuto" ${auto?"checked":""}><i class="switch"></i></label>
+    <button class="linkbtn" id="uAll">Alle Versionen auf GitHub ansehen ${I.right}</button>`;
+}
+const spinner=()=>`<i class="spin"></i>`;
+function bindUpdateCard(){
+  const c=$("#updCard"); if(!c) return;
+  $("#uCheck").onclick=()=>{haptic("light");startUpdateCheck(false)};
+  $("#uAuto").onchange=()=>{haptic("tick");ROOT.settings.autoUpdate=$("#uAuto").checked;saveNow()};
+  $("#uAll").onclick=()=>{haptic("light");N&&N.openRepoPage&&N.openRepoPage(REPO_URL+"/releases")};
+  const g=$("#uGet"); if(g) g.onclick=()=>{haptic("success");UPD.state="downloading";UPD.pct=0;refreshUpdateCard();N&&N.downloadUpdate(UPD.info.apk)};
+  const ins=$("#uInstall"); if(ins) ins.onclick=()=>{haptic("light");N&&N.installUpdate()};
+}
+function refreshUpdateCard(){const c=$("#updCard");if(c){c.innerHTML=updateCardHtml();bindUpdateCard()}$("#updDot").classList.toggle("show",["available","ready","permission"].includes(UPD.state))}
+function startUpdateCheck(silent){
+  if(!N||!N.checkUpdate){if(!silent){UPD.state="error";UPD.err="Update-Prüfung nur in der App möglich";refreshUpdateCard()}return}
+  if(!silent){UPD.state="checking";refreshUpdateCard()}
+  N.checkUpdate(!!silent);
+}
+window.onUpdateInfo=function(info,silent){
+  ROOT.settings.lastUpdateCheck=Date.now(); saveNow();
+  if(info.tag&&isNewer(info.tag,APP_VERSION)){
+    UPD.info=info; if(!["downloading","ready","permission"].includes(UPD.state)) UPD.state="available";
+    if(silent) showToast(`Update ${info.tag.replace(/^v/,"")} verfügbar – siehe Einstellungen`); else haptic("success");
+  } else { UPD.state=silent?UPD.state:"current"; UPD.info=null; if(!silent) haptic("light"); }
+  refreshUpdateCard();
+};
+window.onUpdateError=function(msg,silent){
+  if(silent) return;
+  UPD.state=UPD.info&&UPD.state==="downloading"?"available":"error";
+  UPD.err=/fehlgeschlagen/.test(msg)?msg:"Keine Verbindung zu GitHub. Bitte Internet prüfen.";
+  if(UPD.state==="available") showToast(msg);
+  haptic("warn"); refreshUpdateCard();
+};
+window.onUpdateProgress=function(p){UPD.pct=p;const b=document.querySelector(".ubar i");if(b){b.style.width=Math.max(3,p)+"%";b.parentNode.nextElementSibling.textContent="Lade herunter … "+(p>=0?p+" %":"")}};
+window.onUpdateDownloaded=function(){UPD.state="ready";haptic("success");refreshUpdateCard()};
+window.onUpdateNeedsPermission=function(){UPD.state="permission";refreshUpdateCard()};
+/** Tiny, safe markdown subset for release notes (everything is escaped first; soft line breaks are joined). */
+function mdLite(md){
+  const inl=l=>l.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"$1").replace(/(^|\s)\*(\S.*?)\*/g,"$1<i>$2</i>");
+  const out=[]; let cur=null;   // cur = {cls, text} of the block being collected
+  const flush=()=>{if(cur){out.push(`<div class="${cur.cls}">${inl(cur.text)}</div>`);cur=null}};
+  for(const raw of esc(md||"").split(/\r?\n/)){
+    const l=raw.trim();
+    if(!l||/^-{3,}$/.test(l)){flush();continue}
+    let m;
+    if((m=l.match(/^#{1,6}\s+(.*)/))){flush();out.push(`<div class="mh">${inl(m[1])}</div>`);continue}
+    if((m=l.match(/^[-*]\s+(.*)/))){flush();cur={cls:"mli",text:m[1]};continue}
+    if((m=l.match(/^(\d+\.)\s+(.*)/))){flush();cur={cls:"mli num",text:m[1]+" "+m[2]};continue}
+    if((m=l.match(/^&gt;\s?(.*)/))){flush();cur={cls:"mq",text:m[1]};continue}
+    if(cur) cur.text+=" "+l; else cur={cls:"mp",text:l};
+  }
+  flush(); return out.join("");
+}
+function openAbout(){
+  openSheet(`<div class="about"><img src="data:," alt="" style="display:none"><div class="abadge">${I.check}</div><h2>Grupp-Checkan</h2>
+    <p>Version ${esc(APP_VERSION)}</p><p class="hint">Anwesenheit abhaken – schnell, übersichtlich und offline.<br>Ein privates Hobbyprojekt.</p></div>
+    <div class="scard">${setRow("aRepo",I.list,"Projekt auf GitHub","Quellcode, Releases & Infos")}${setRow("aIssues",I.info,"Fehler melden / Ideen","über GitHub Issues")}</div>
+    <div class="hint" style="margin-top:12px;text-align:center">Keine Werbung · kein Tracking · deine Daten bleiben auf dem Gerät</div>
+    <div class="actions" style="margin-top:14px"><button class="btn block" onclick="closeSheet()">Schließen</button></div>`);
+  $("#aRepo").onclick=()=>{haptic("light");N&&N.openRepoPage&&N.openRepoPage(REPO_URL)};
+  $("#aIssues").onclick=()=>{haptic("light");N&&N.openRepoPage&&N.openRepoPage(REPO_URL+"/issues")};
+}
+const TERMS_HTML=`<h2>Nutzungsbedingungen &amp; Haftungsausschluss</h2>
+<p class="hint">Stand: November 2026</p>
+<h3>1. Privates Hobbyprojekt</h3>
+<p>Grupp-Checkan ist ein privates, nicht-kommerzielles Hobbyprojekt. Die App wird kostenlos und „wie sie ist“ zur Verfügung gestellt – ohne Gewähr für Funktion, Fehlerfreiheit, Verfügbarkeit oder Eignung für einen bestimmten Zweck.</p>
+<h3>2. Haftung</h3>
+<p>Für Schäden, die aus der Nutzung der App entstehen – insbesondere für den Verlust von Daten –, wird keine Haftung übernommen, soweit dies gesetzlich zulässig ist. Unberührt bleibt die Haftung für Vorsatz und grobe Fahrlässigkeit sowie für Schäden aus der Verletzung von Leben, Körper oder Gesundheit.</p>
+<h3>3. Datensicherung</h3>
+<p>Du bist selbst dafür verantwortlich, regelmäßig Datensicherungen zu erstellen. Beim Deinstallieren der App, bei einem Defekt oder Wechsel des Geräts gehen alle Daten ohne eigene Sicherung verloren. Ohne das gewählte Passwort lässt sich eine verschlüsselte Sicherung nicht wiederherstellen.</p>
+<h3>4. Verantwortungsvoller Umgang mit Daten</h3>
+<p>Die App verarbeitet personenbezogene Daten von Kindern. Für den rechtmäßigen Umgang mit diesen Daten bist du bzw. deine Einrichtung verantwortlich. Insbesondere:</p>
+<ul><li>Kläre vor der Nutzung, ob der Einsatz bei deinem Träger, deiner Schule oder Einrichtung erlaubt ist (Datenschutz/DSGVO).</li>
+<li>Erfasse nur die Daten, die du wirklich brauchst.</li>
+<li>Schütze dein Gerät mit einer Displaysperre.</li>
+<li>Gib Exporte und Sicherungen nur an berechtigte Personen weiter.</li></ul>
+<h3>5. Kein Ersatz für offizielle Nachweise</h3>
+<p>Die App ist ein persönliches Hilfsmittel. Sie ersetzt keine von deinem Träger oder gesetzlich vorgeschriebenen Anwesenheits-, Aufsichts- oder Dokumentationsnachweise.</p>
+<h3>6. Updates und Änderungen</h3>
+<p>Die App kann jederzeit geändert, weiterentwickelt oder eingestellt werden. Es besteht kein Anspruch auf Updates, Support oder Fehlerbehebung.</p>`;
+const PRIVACY_HTML=`<h2>Datenschutzhinweis</h2>
+<p class="hint">Stand: November 2026</p>
+<h3>Deine Daten bleiben auf deinem Gerät</h3>
+<p>Alle Eingaben (Kinder, Gruppen, Anwesenheiten, Einstellungen) werden ausschließlich lokal auf deinem Gerät gespeichert und dort verschlüsselt. Der Entwickler erhält keinerlei Daten. Es gibt keine Werbung, kein Tracking und keine Analyse.</p>
+<h3>Kein Cloud-Backup</h3>
+<p>Die App-Daten sind von der automatischen Android-/Google-Datensicherung und von der Übertragung beim Gerätewechsel ausgeschlossen.</p>
+<h3>Update-Prüfung über GitHub</h3>
+<p>Nur wenn du „Prüfen“ tippst oder die automatische Update-Suche eingeschaltet ist, verbindet sich die App mit GitHub (GitHub, Inc., USA), um die neueste Version abzufragen und ggf. herunterzuladen. Dabei werden – wie bei jedem Webseitenaufruf – technisch notwendige Daten wie deine IP-Adresse an GitHub übermittelt. Daten aus der App werden dabei nicht übertragen. Hinweise zum Datenschutz bei GitHub findest du in der GitHub Privacy Statement.</p>
+<h3>Exporte und Sicherungen</h3>
+<p>Wenn du Listen exportierst, teilst oder Sicherungen speicherst, verlassen diese Daten den geschützten Bereich der App. Für ihre Weitergabe und Aufbewahrung bist du selbst verantwortlich.</p>
+<h3>Verantwortlichkeit</h3>
+<p>Verantwortlich im Sinne der DSGVO für die in der App erfassten Daten ist die Person bzw. Einrichtung, die die App nutzt.</p>
+<h3>Daten löschen</h3>
+<p>Einzelne Einträge kannst du in der App löschen. Beim Deinstallieren der App werden alle Daten vollständig vom Gerät entfernt.</p>`;
+function showConsentIfNeeded(){
+  if((ROOT.settings.termsAccepted||0)>=TERMS_VERSION) return;
+  const ov=document.createElement("div"); ov.className="consent"; ov.id="consent";
+  ov.innerHTML=`<div class="cwrap"><div class="chead"><div class="abadge">${I.check}</div><h1>Willkommen bei Grupp-Checkan</h1>
+      <p>Bevor es losgeht, lies bitte kurz die folgenden Hinweise.</p></div>
+    <div class="legal">${TERMS_HTML}<hr>${PRIVACY_HTML}</div></div>
+    <div class="cfoot">
+      <label class="ccheck"><input type="checkbox" id="cAccept"><span>Ich habe die Nutzungsbedingungen und den Datenschutzhinweis gelesen und akzeptiere sie.</span></label>
+      <label class="ccheck"><input type="checkbox" id="cAuto" checked><span>Automatisch nach Updates suchen (über GitHub, höchstens einmal täglich). Jederzeit in den Einstellungen änderbar.</span></label>
+      <div class="actions"><button class="btn ghost" id="cNo">Ablehnen</button><button class="btn" id="cYes" disabled>Zustimmen &amp; loslegen</button></div>
+    </div>`;
+  document.body.appendChild(ov);
+  $("#cAccept").onchange=()=>{haptic("tick");$("#cYes").disabled=!$("#cAccept").checked};
+  $("#cAuto").onchange=()=>haptic("tick");
+  $("#cNo").onclick=()=>{haptic("warn");confirmSheet("App ohne Zustimmung beenden?","Ohne Zustimmung zu den Nutzungsbedingungen kann die App nicht verwendet werden.","Beenden",()=>{closeSheet();N&&N.exitApp?N.exitApp():showToast("Bitte die App schließen")})};
+  $("#cYes").onclick=()=>{
+    ROOT.settings.termsAccepted=TERMS_VERSION; ROOT.settings.termsAcceptedAt=new Date().toISOString(); ROOT.settings.autoUpdate=$("#cAuto").checked;
+    saveNow(); haptic("success"); ov.classList.add("hide"); setTimeout(()=>ov.remove(),300);
+    if(ROOT.settings.autoUpdate) setTimeout(()=>autoUpdateCheck(),800);
+  };
+}
+function autoUpdateCheck(){
+  if(!ROOT.settings.autoUpdate||!N||!N.checkUpdate) return;
+  if(Date.now()-(ROOT.settings.lastUpdateCheck||0)<20*3600*1000) return;
+  startUpdateCheck(true);
+}
+
 /* ---------- Profiles ---------- */
 const PCOLORS=["#3b5bfd","#0d9488","#c026d3","#ea580c","#16a34a","#dc2626","#7c3aed","#0284c7"];
 function initials(name){
@@ -617,6 +850,7 @@ function render(){
   if(S.view==="today") renderToday();
   else if(S.view==="calendar") renderCalendar();
   else if(S.view==="master") renderMaster();
+  else if(S.view==="settings") renderSettings();
 }
 
 /* ---------- Attendance view ---------- */
@@ -956,26 +1190,17 @@ function openGroupNames(){
 }
 function openMasterMenu(){
   const wd=S.mWeekday, all=wd==="all";
-  const rm=DB.settings.retentionMonths||0;
-  openSheet(`<h2>Einstellungen</h2><div class="optlist">
+  openSheet(`<h2>Optionen</h2><div class="optlist">
     ${all?"":`<button id="oCopy">${I.copy}<span>Liste von ${WD_LONG[wd]} kopieren<small>Alle Kinder dieses Tages auf andere Tage übernehmen</small></span></button>
     <button id="oExpDay">${I.file}<span>Liste von ${WD_LONG[wd]} exportieren<small>Alle Kinder dieses Tages als Textdatei</small></span></button>`}
-    <button id="oGroups">${I.edit}<span>Gruppen umbenennen<small>Eigene Namen für die Gruppen vergeben</small></span></button>
     <button id="oExpPersons">${I.users}<span>Gesamtliste aller Kinder exportieren<small>Jedes Kind einmal, mit seinen Wochentagen</small></span></button>
     <button id="oExpAll">${I.list}<span>Gesamtübersicht exportieren<small>Alle Kinderlisten von Montag bis Freitag als Textdatei</small></span></button>
-    <button id="oRetention">${I.trash}<span>Alte Einträge automatisch löschen<small>${rm?`Aktiv: Anwesenheiten älter als ${retLabel(rm)} werden gelöscht`:"Aus"}</small></span></button>
-    <button id="oBackup">${I.backup}<span>Datensicherung erstellen<small>Alle Stammdaten & Anwesenheiten als Datei speichern, optional mit Passwort</small></span></button>
-    <button id="oRestore">${I.save}<span>Datensicherung wiederherstellen<small>Eine zuvor gespeicherte Sicherung laden</small></span></button>
-  </div>`);
-  $("#oGroups").onclick=()=>{haptic("light");openGroupNames()};
+  </div><div class="hint" style="text-align:center;margin-top:8px">Gruppen, Datensicherung und weitere Einstellungen findest du im Tab „Einstellungen“.</div>`);
   $("#oExpPersons").onclick=()=>{haptic("light");openTextSheet("Gesamtliste aller Kinder",buildPersonsText(),"Kinder_Gesamtliste.txt")};
   if(!all) $("#oCopy").onclick=()=>{haptic("tick");openCopyDay(wd)};
   if(!all) $("#oExpDay").onclick=()=>{haptic("light");openTextSheet(`Liste · ${WD_LONG[wd]}`,buildRosterText([wd]),`Kinderliste_${WD_LONG[wd]}.txt`)};
   $("#oExpAll").onclick=()=>{haptic("light");openTextSheet("Gesamtübersicht",buildRosterText([1,2,3,4,5]),`Kinderlisten_Gesamtuebersicht_${iso(new Date())}.txt`)};
-  $("#oRetention").onclick=()=>{haptic("light");openRetention()};
-  $("#oBackup").onclick=()=>{haptic("light");openBackup()};
-  $("#oRestore").onclick=()=>{haptic("light");closeSheet();
-    if(N&&N.openFile) N.openFile(); else {const i=document.createElement("input");i.type="file";i.accept=".json,application/json";i.onchange=()=>{const r=new FileReader();r.onload=()=>window.onFileOpened(r.result);r.readAsText(i.files[0])};i.click()}};
+
 }
 function openCopyDay(from){
   const sel=new Set();
@@ -1271,6 +1496,8 @@ if(!N&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches) se
 load();
 updatePill(0);
 render();
+showConsentIfNeeded();
+autoUpdateCheck();
 </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 # Anwesenheit – Android-App
 
 Offline-App zum Abhaken der Anwesenheit von Kindern, mit eigener Liste für jeden Wochentag (Mo–Fr).
-Alle Daten bleiben auf dem Gerät – kein Konto, keine Cloud, keine Internetverbindung nötig.
+Alle Daten bleiben auf dem Gerät – kein Konto, keine Cloud. Internet wird nur für die optionale Update-Prüfung genutzt.
 
 **Download:** die aktuelle `Anwesenheit.apk` unter [Releases](../../releases) herunterladen und auf dem
 Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unbekannten Quellen“ erlauben).
@@ -19,11 +19,17 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
   - Gruppen frei benennbar: Farbwörter färben die Gruppe, Tiere & Co. bekommen automatisch ein Emoji
   - Exporte (Tagesliste, Gesamtübersicht, Gesamtliste) und Datensicherung/Wiederherstellung (JSON)
 - **Profile** – getrennte Datenbestände; Pille oben links: antippen = verwalten, nach unten/oben wischen = wechseln
+- **Einstellungen** – App-Update direkt aus der App, Gruppen, Datensicherung, automatisches Löschen,
+  Nutzungsbedingungen und Datenschutzhinweis
 - Haptisches Feedback, heller und dunkler Modus
 
 ## Datenschutz & Sicherheit
 
-- **Kein Internet:** Die App hat keine Internet-Berechtigung und kann keine Daten senden.
+- **Internet nur für Updates:** Die App verbindet sich ausschließlich mit GitHub, um nach Updates zu suchen
+  und sie herunterzuladen – nur auf Knopfdruck oder wenn die automatische Suche eingeschaltet ist. Es werden
+  dabei keine App-Daten übertragen. Die Oberfläche selbst kann keine Webseiten laden (alle Anfragen werden
+  blockiert), unverschlüsselte Verbindungen sind verboten. Android installiert ein Update nur, wenn es mit
+  demselben Schlüssel signiert ist wie die installierte App.
 - **Verschlüsselte Daten:** Die Datendatei wird mit AES-256-GCM verschlüsselt. Der Schlüssel liegt im
   Android-Keystore (wo vorhanden im Sicherheitschip) und kann das Gerät nicht verlassen – eine kopierte
   Datei ist unlesbar. Für Nutzer ändert sich nichts (kein Passwort nötig).
@@ -38,7 +44,8 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
 | Pfad | Inhalt |
 |---|---|
 | `app/assets/index.html` | die komplette Oberfläche (HTML/CSS/JS) |
-| `app/src/.../MainActivity.java` | Android-Hülle: WebView, Speichern, Teilen, Datei-Dialoge, Vibration |
+| `app/src/.../MainActivity.java` | Android-Hülle: WebView, verschlüsselte Speicherung, Teilen, Datei-Dialoge, Vibration, Updates |
+| `app/src/.../ApkProvider.java` | übergibt ein heruntergeladenes Update an den Android-Installer |
 | `build/build.py` | Build ohne Android SDK/Gradle: Manifest, Ressourcen, Icon, Dex, Signatur |
 | `build/axml.py` | Encoder für binäres Android-XML und `resources.arsc` |
 

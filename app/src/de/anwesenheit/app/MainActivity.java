@@ -19,6 +19,16 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.provider.Settings;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayInputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -61,16 +71,42 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(true);
         s.setTextZoom(100);
         web.setWebChromeClient(new WebChromeClient());
+        s.setAllowContentAccess(false);
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 applyTheme();
+            }
+
+            // The UI never navigates anywhere: only the bundled page is allowed.
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return true;
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+                return true;
+            }
+
+            // Block every request that does not target the app's own assets (no remote content in the UI).
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+                if (url != null && url.startsWith("file:///android_asset/")) return null;
+                return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
             }
         });
         web.addJavascriptInterface(new Bridge(), "Android");
         setContentView(web);
         applyBars();
         web.loadUrl("file:///android_asset/index.html");
+        // an update that has been installed leaves its APK behind: clean it up
+        try {
+            File apk = ApkProvider.apkFile(this);
+            if (apk.exists() && getPackageManager().getPackageArchiveInfo(apk.getPath(), 0) != null
+                    && getPackageManager().getPackageArchiveInfo(apk.getPath(), 0).versionName.equals(appVersion())) apk.delete();
+        } catch (Exception ignored) {
+        }
     }
 
     private boolean isDark() {
@@ -252,7 +288,182 @@ public class MainActivity extends Activity {
     }
 
     /** Methods callable from JavaScript as window.Android.* */
+    /* ---------- Updates via GitHub Releases ----------
+     * Only these fixed addresses are ever contacted, and only for the update check/download.
+     * No app data is sent. Android itself refuses an update that is not signed with the same key.
+     */
+    private static final String REPO = "arthurtschik/Grupp-Checkan";
+    private static final String API_LATEST = "https://api.github.com/repos/" + REPO + "/releases/latest";
+    private static final String DOWNLOAD_PREFIX = "https://github.com/" + REPO + "/releases/download/";
+    private static final String WEB_PREFIX = "https://github.com/" + REPO;
+    private volatile boolean downloading = false;
+
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "0";
+        }
+    }
+
+    private HttpURLConnection open(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(30000);
+        c.setRequestProperty("User-Agent", "Grupp-Checkan-App/" + appVersion());
+        c.setRequestProperty("Accept", "application/vnd.github+json");
+        c.setInstanceFollowRedirects(true);
+        return c;
+    }
+
+    private void checkUpdate(final boolean silent) {
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    HttpURLConnection c = open(API_LATEST);
+                    if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
+                    InputStream in = c.getInputStream();
+                    JSONObject o = new JSONObject(new String(readAll(in), UTF8));
+                    in.close();
+                    JSONObject r = new JSONObject();
+                    r.put("tag", o.optString("tag_name"));
+                    r.put("name", o.optString("name"));
+                    r.put("body", o.optString("body"));
+                    r.put("html", o.optString("html_url"));
+                    r.put("published", o.optString("published_at"));
+                    JSONArray assets = o.optJSONArray("assets");
+                    for (int i = 0; assets != null && i < assets.length(); i++) {
+                        JSONObject a = assets.getJSONObject(i);
+                        String u = a.optString("browser_download_url");
+                        if (u.endsWith(".apk") && u.startsWith(DOWNLOAD_PREFIX)) {
+                            r.put("apk", u);
+                            r.put("size", a.optLong("size"));
+                            break;
+                        }
+                    }
+                    js("window.onUpdateInfo&&window.onUpdateInfo(" + r.toString() + "," + silent + ")");
+                } catch (Exception e) {
+                    js("window.onUpdateError&&window.onUpdateError(" + jsStr(String.valueOf(e.getMessage())) + "," + silent + ")");
+                }
+            }
+        }).start();
+    }
+
+    private void downloadUpdate(final String url) {
+        if (downloading) return;
+        if (url == null || !url.startsWith(DOWNLOAD_PREFIX) || !url.endsWith(".apk")) {
+            notifyJs("Ungültige Update-Adresse", false);
+            return;
+        }
+        downloading = true;
+        new Thread(new Runnable() {
+            public void run() {
+                File out = ApkProvider.apkFile(MainActivity.this);
+                try {
+                    HttpURLConnection c = open(url);
+                    if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
+                    long total = c.getContentLength();
+                    InputStream in = c.getInputStream();
+                    FileOutputStream fo = new FileOutputStream(out);
+                    byte[] buf = new byte[16384];
+                    long done = 0;
+                    int n, lastPct = -1;
+                    while ((n = in.read(buf)) > 0) {
+                        fo.write(buf, 0, n);
+                        done += n;
+                        int pct = total > 0 ? (int) (done * 100 / total) : -1;
+                        if (pct != lastPct) {
+                            lastPct = pct;
+                            js("window.onUpdateProgress&&window.onUpdateProgress(" + pct + ")");
+                        }
+                    }
+                    fo.close();
+                    in.close();
+                    js("window.onUpdateDownloaded&&window.onUpdateDownloaded()");
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            installUpdate();
+                        }
+                    });
+                } catch (Exception e) {
+                    out.delete();
+                    js("window.onUpdateError&&window.onUpdateError(" + jsStr("Download fehlgeschlagen") + ",false)");
+                } finally {
+                    downloading = false;
+                }
+            }
+        }).start();
+    }
+
+    private void installUpdate() {
+        if (!ApkProvider.apkFile(this).exists()) return;
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            js("window.onUpdateNeedsPermission&&window.onUpdateNeedsPermission()");
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {
+            }
+            return;
+        }
+        Intent i = new Intent(Intent.ACTION_VIEW);
+        i.setDataAndType(ApkProvider.URI, "application/vnd.android.package-archive");
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(i);
+        } catch (Exception e) {
+            notifyJs("Installation konnte nicht gestartet werden", false);
+        }
+    }
+
     public class Bridge {
+        @JavascriptInterface
+        public String version() {
+            return appVersion();
+        }
+
+        @JavascriptInterface
+        public void checkUpdate(boolean silent) {
+            MainActivity.this.checkUpdate(silent);
+        }
+
+        @JavascriptInterface
+        public void downloadUpdate(String url) {
+            MainActivity.this.downloadUpdate(url);
+        }
+
+        @JavascriptInterface
+        public void installUpdate() {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    MainActivity.this.installUpdate();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean hasDownloadedUpdate() {
+            return ApkProvider.apkFile(MainActivity.this).exists();
+        }
+
+        /** Opens a page of this project's GitHub repository in the browser (nothing else is allowed). */
+        @JavascriptInterface
+        public void openRepoPage(String url) {
+            if (url == null || !(url.equals(WEB_PREFIX) || url.startsWith(WEB_PREFIX + "/"))) return;
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception ignored) {
+            }
+        }
+
+        @JavascriptInterface
+        public void exitApp() {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    finishAffinity();
+                }
+            });
+        }
+
         @JavascriptInterface
         public String loadData() {
             synchronized (MainActivity.this) {

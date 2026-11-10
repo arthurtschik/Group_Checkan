@@ -16,7 +16,7 @@ OUT = os.path.join(ROOT, "out")
 GEN = os.path.join(OUT, "gen")
 
 PKG = "de.anwesenheit.app"
-VERSION_CODE, VERSION_NAME = 13, "2.2"
+VERSION_CODE, VERSION_NAME = 14, "2.3"
 MIN_SDK, TARGET_SDK = 24, 34
 
 # android attribute ids (from android.R.attr)
@@ -25,7 +25,8 @@ R = dict(theme=0x01010000, label=0x01010001, icon=0x01010002, name=0x01010003, e
          minSdkVersion=0x0101020c, versionCode=0x0101021b, versionName=0x0101021c,
          windowSoftInputMode=0x0101022b, targetSdkVersion=0x01010270, allowBackup=0x01010280,
          hardwareAccelerated=0x010102d3, drawable=0x01010199, roundIcon=0x0101052c,
-         dataExtractionRules=0x0101063e)
+         dataExtractionRules=0x0101063e, authorities=0x01010018, grantUriPermissions=0x0101001b,
+         usesCleartextTraffic=0x010104ec)
 THEME_MATERIAL_LIGHT_NOACTIONBAR = 0x01030240
 
 # app resource ids (must match encode_arsc layout below)
@@ -47,6 +48,9 @@ def manifest():
         Node("uses-sdk", [a("minSdkVersion", T_DEC, MIN_SDK, R["minSdkVersion"]),
                           a("targetSdkVersion", T_DEC, TARGET_SDK, R["targetSdkVersion"])]),
         Node("uses-permission", [a("name", T_STRING, "android.permission.VIBRATE", R["name"])]),
+        # network is used only for the update check/download from GitHub Releases (see MainActivity)
+        Node("uses-permission", [a("name", T_STRING, "android.permission.INTERNET", R["name"])]),
+        Node("uses-permission", [a("name", T_STRING, "android.permission.REQUEST_INSTALL_PACKAGES", R["name"])]),
         Node("application", [
             a("label", T_STRING, "Anwesenheit", R["label"]),
             a("icon", T_REF, MIPMAP_LAUNCHER, R["icon"]),
@@ -55,7 +59,14 @@ def manifest():
             a("allowBackup", T_BOOL, False, R["allowBackup"]),             # no cloud/adb backup
             a("dataExtractionRules", T_REF, XML_EXTRACTION_RULES, R["dataExtractionRules"]),  # Android 12+: also no device transfer
             a("hardwareAccelerated", T_BOOL, True, R["hardwareAccelerated"]),
+            a("usesCleartextTraffic", T_BOOL, False, R["usesCleartextTraffic"]),  # HTTPS only
         ], [
+            Node("provider", [
+                a("name", T_STRING, PKG + ".ApkProvider", R["name"]),
+                a("authorities", T_STRING, PKG + ".apk", R["authorities"]),
+                a("exported", T_BOOL, False, R["exported"]),
+                a("grantUriPermissions", T_BOOL, True, R["grantUriPermissions"]),
+            ]),
             Node("activity", [
                 a("name", T_STRING, PKG + ".MainActivity", R["name"]),
                 a("exported", T_BOOL, True, R["exported"]),
