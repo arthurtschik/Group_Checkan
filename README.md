@@ -1,0 +1,50 @@
+# Anwesenheit – Android-App
+
+Offline-App zum Abhaken der Anwesenheit von Kindern, mit eigener Liste für jeden Wochentag (Mo–Fr).
+Alle Daten bleiben auf dem Gerät – kein Konto, keine Cloud, keine Internetverbindung nötig.
+
+**Download:** die aktuelle `Anwesenheit.apk` unter [Releases](../../releases) herunterladen und auf dem
+Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unbekannten Quellen“ erlauben).
+
+## Funktionen
+
+- **Anwesenheit** – öffnet automatisch den heutigen Wochentag (am Wochenende den letzten Freitag)
+  - Antippen = anwesend (mit Durchstreich-Animation), erneut antippen = zurücksetzen (mit „Rückgängig“)
+  - ⌂ früher abgeholt (mit Uhrzeit), 🌡 krank
+  - Zähler, Fortschrittsbalken, Filter nach Gruppe, Klasse oder „offen“, Sortierung nach Vor- oder Nachname
+  - „Fertig“-Effekt mit Vibration, sobald alle Kinder erfasst sind
+- **Kalender** – vergangene Tage ansehen, nachtragen und als Text-Tabelle exportieren; Monatsübersicht je Kind
+- **Stammdaten** – Kinder mit Vorname, Nachname, Gruppe (optional) und Klasse je Wochentag
+  - Reiter „Alle“ mit Suche, Wischen zum Löschen, Sortierung, Listen kopieren
+  - Gruppen frei benennbar: Farbwörter färben die Gruppe, Tiere & Co. bekommen automatisch ein Emoji
+  - Exporte (Tagesliste, Gesamtübersicht, Gesamtliste) und Datensicherung/Wiederherstellung (JSON)
+- **Profile** – getrennte Datenbestände; Pille oben links: antippen = verwalten, nach unten/oben wischen = wechseln
+- Haptisches Feedback, heller und dunkler Modus
+
+## Aufbau
+
+| Pfad | Inhalt |
+|---|---|
+| `app/assets/index.html` | die komplette Oberfläche (HTML/CSS/JS) |
+| `app/src/.../MainActivity.java` | Android-Hülle: WebView, Speichern, Teilen, Datei-Dialoge, Vibration |
+| `build/build.py` | Build ohne Android SDK/Gradle: Manifest, Ressourcen, Icon, Dex, Signatur |
+| `build/axml.py` | Encoder für binäres Android-XML und `resources.arsc` |
+
+## Bauen
+
+Benötigt: JDK 17+, Python 3, Node.js mit Playwright (für die Icons) und drei JARs in einem Ordner `$TOOLS`:
+
+- `android.jar` (API 34)
+- `dalvik-dx-16.0.1.jar` (Maven Central: `com.jakewharton.android.repackaged:dalvik-dx`)
+- `apksig-2.3.0.jar` (Maven Central: `com.android.tools.build:apksig`)
+
+```bash
+TOOLS=/pfad/zu/tools KEYSTORE=/pfad/zu/release.p12 KEYSTORE_PASS=... python3 build/build.py
+```
+
+Ergebnis: `Anwesenheit.apk` im Projektordner.
+
+**Wichtig:** Der Signaturschlüssel (`release.p12`) gehört **nicht** ins Repository und ist per `.gitignore`
+ausgeschlossen. Bewahre ihn sicher auf: Updates lassen sich nur mit demselben Schlüssel über die
+installierte App installieren – mit einem anderen Schlüssel müsste die App neu installiert werden und die
+Daten auf dem Gerät gingen verloren. Fehlt die Datei, erzeugt der Build einen neuen Schlüssel.

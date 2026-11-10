@@ -1,0 +1,9 @@
+# build output
+out/
+*.apk
+__pycache__/
+
+# signing key – never publish
+*.p12
+*.jks
+*.keystore
