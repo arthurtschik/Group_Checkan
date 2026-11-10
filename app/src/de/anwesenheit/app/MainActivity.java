@@ -455,6 +455,19 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Opens the mail app with the fixed project contact address. */
+        @JavascriptInterface
+        public void contactMail() {
+            Intent i = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:arthurtschik.business@gmail.com"));
+            i.putExtra(Intent.EXTRA_SUBJECT, "Grupp-Checkan " + appVersion());
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(i);
+            } catch (Exception e) {
+                notifyJs("Keine E-Mail-App gefunden", false);
+            }
+        }
+
         @JavascriptInterface
         public void exitApp() {
             runOnUiThread(new Runnable() {

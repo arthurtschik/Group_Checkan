@@ -39,6 +39,19 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
 - **Alte Einträge automatisch löschen** (optional, je Profil): nach 1, 3, 6, 12 oder 24 Monaten.
 - Text-Exporte sind bewusst unverschlüsselt – beim Weitergeben auf den Empfänger achten.
 
+## Echtheit prüfen
+
+Alle offiziellen Versionen sind mit demselben Schlüssel signiert. Fingerabdruck des Zertifikats:
+
+```
+SHA-256: 4C:C4:B3:A7:45:64:A3:E2:58:F8:53:82:4E:19:20:5F:1E:CF:7C:FA:F2:FD:AB:9D:23:6C:B0:FB:8D:95:8E:04
+```
+
+Prüfen lässt sich das mit `apksigner verify --print-certs Anwesenheit.apk` (Android SDK, Zeile
+„certificate SHA-256 digest“) oder mit Tools wie *App Manager* direkt auf dem Handy. Stimmt der Wert nicht
+überein, stammt die Datei nicht von hier – bitte nicht installieren. Updates aus der App heraus prüft
+Android automatisch.
+
 ## Aufbau
 
 | Pfad | Inhalt |
@@ -78,5 +91,20 @@ Die App verarbeitet personenbezogene Daten von Kindern. Bitte nutze sie verantwo
 mit den Daten um, gib Exporte nur an berechtigte Personen weiter, kläre den Einsatz mit deinem Träger bzw.
 deiner Einrichtung (Datenschutz/DSGVO), schütze dein Handy mit einer Displaysperre und erstelle regelmäßig
 Datensicherungen. Die Verantwortung für den Umgang mit den Daten liegt bei den Nutzerinnen und Nutzern.
+Die App ist ein persönliches Hilfsmittel und ersetzt keine vorgeschriebenen Anwesenheits-, Aufsichts- oder
+Dokumentationsnachweise.
 
 Release Notes der einzelnen Versionen: [`docs/releases/`](docs/releases/)
+
+## Lizenz
+
+Der Quellcode steht unter der [MIT-Lizenz](LICENSE).
+
+## Impressum
+
+Arthurtschik  
+c/o Block Services  
+Stuttgarter Str. 106  
+70736 Fellbach
+
+Anfragen: arthurtschik.business@gmail.com
