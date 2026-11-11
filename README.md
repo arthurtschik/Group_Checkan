@@ -1,9 +1,9 @@
-# Anwesenheit – Android-App
+# Group Checkan – Android-App
 
 Offline-App zum Abhaken der Anwesenheit von Kindern, mit eigener Liste für jeden Wochentag (Mo–Fr).
 Alle Daten bleiben auf dem Gerät – kein Konto, keine Cloud. Internet wird nur für die optionale Update-Prüfung genutzt.
 
-**Download:** die aktuelle `Anwesenheit.apk` unter [Releases](../../releases) herunterladen und auf dem
+**Download:** die aktuelle `Group-Checkan.apk` unter [Releases](../../releases) herunterladen und auf dem
 Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unbekannten Quellen“ erlauben).
 
 ## Funktionen
@@ -19,8 +19,8 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
   - Gruppen frei benennbar: Farbwörter färben die Gruppe, Tiere & Co. bekommen automatisch ein Emoji
   - Exporte (Tagesliste, Gesamtübersicht, Gesamtliste) und Datensicherung/Wiederherstellung (JSON)
 - **Profile** – getrennte Datenbestände; Pille oben links: antippen = verwalten, nach unten/oben wischen = wechseln
-- **Einstellungen** – App-Update direkt aus der App, Gruppen, Datensicherung, automatisches Löschen,
-  Nutzungsbedingungen und Datenschutzhinweis
+- **Einstellungen** – nur allgemeine Einstellungen: App-Update direkt aus der App, Datensicherung (alle oder
+  ausgewählte Profile), automatisches Löschen (für ausgewählte Profile), Profile, Rechtliches & Impressum
 - Haptisches Feedback, heller und dunkler Modus
 
 ## Datenschutz & Sicherheit
@@ -36,7 +36,7 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
 - **Kein Cloud-Backup, keine Geräteübertragung:** Die Daten werden nicht in Google-Backups oder beim
   Gerätewechsel übernommen. Für den Umzug die eigene Datensicherung verwenden.
 - **Datensicherung optional mit Passwort** (AES-256-GCM, Schlüssel per PBKDF2-SHA256 mit 310.000 Runden).
-- **Alte Einträge automatisch löschen** (optional, je Profil): nach 1, 3, 6, 12 oder 24 Monaten.
+- **Alte Einträge automatisch löschen** (optional, für ausgewählte Profile): nach 1, 3, 6, 12 oder 24 Monaten.
 - Text-Exporte sind bewusst unverschlüsselt – beim Weitergeben auf den Empfänger achten.
 
 ## Echtheit prüfen
@@ -47,7 +47,7 @@ Alle offiziellen Versionen sind mit demselben Schlüssel signiert. Fingerabdruck
 SHA-256: 4C:C4:B3:A7:45:64:A3:E2:58:F8:53:82:4E:19:20:5F:1E:CF:7C:FA:F2:FD:AB:9D:23:6C:B0:FB:8D:95:8E:04
 ```
 
-Prüfen lässt sich das mit `apksigner verify --print-certs Anwesenheit.apk` (Android SDK, Zeile
+Prüfen lässt sich das mit `apksigner verify --print-certs Group-Checkan.apk` (Android SDK, Zeile
 „certificate SHA-256 digest“) oder mit Tools wie *App Manager* direkt auf dem Handy. Stimmt der Wert nicht
 überein, stammt die Datei nicht von hier – bitte nicht installieren. Updates aus der App heraus prüft
 Android automatisch.
@@ -74,7 +74,7 @@ Benötigt: JDK 17+, Python 3, Node.js mit Playwright (für die Icons) und drei J
 TOOLS=/pfad/zu/tools KEYSTORE=/pfad/zu/release.p12 KEYSTORE_PASS=... python3 build/build.py
 ```
 
-Ergebnis: `Anwesenheit.apk` im Projektordner.
+Ergebnis: `Group-Checkan.apk` im Projektordner.
 
 **Wichtig:** Der Signaturschlüssel (`release.p12`) gehört **nicht** ins Repository und ist per `.gitignore`
 ausgeschlossen. Bewahre ihn sicher auf: Updates lassen sich nur mit demselben Schlüssel über die
@@ -83,7 +83,7 @@ Daten auf dem Gerät gingen verloren. Fehlt die Datei, erzeugt der Build einen n
 
 ## Hinweis & Haftungsausschluss
 
-Grupp-Checkan ist ein **privates Hobbyprojekt** und wird ohne jede Gewährleistung zur Verfügung gestellt.
+Group Checkan ist ein **privates Hobbyprojekt** und wird ohne jede Gewährleistung zur Verfügung gestellt.
 Es wird **keine Haftung für Datenverluste** oder sonstige Schäden übernommen, die durch die Nutzung der App
 entstehen.
 

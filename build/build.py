@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds Anwesenheit.apk without the Android SDK/Gradle.
+"""Builds Group-Checkan.apk without the Android SDK/Gradle.
 
 Needs: JDK, android.jar (compile classpath), dalvik-dx jar, apksig jar (paths via env or args).
 """
@@ -16,7 +16,7 @@ OUT = os.path.join(ROOT, "out")
 GEN = os.path.join(OUT, "gen")
 
 PKG = "de.anwesenheit.app"
-VERSION_CODE, VERSION_NAME = 15, "2.4"
+VERSION_CODE, VERSION_NAME = 16, "2.5"
 MIN_SDK, TARGET_SDK = 24, 34
 
 # android attribute ids (from android.R.attr)
@@ -52,7 +52,7 @@ def manifest():
         Node("uses-permission", [a("name", T_STRING, "android.permission.INTERNET", R["name"])]),
         Node("uses-permission", [a("name", T_STRING, "android.permission.REQUEST_INSTALL_PACKAGES", R["name"])]),
         Node("application", [
-            a("label", T_STRING, "Anwesenheit", R["label"]),
+            a("label", T_STRING, "Group Checkan", R["label"]),
             a("icon", T_REF, MIPMAP_LAUNCHER, R["icon"]),
             a("roundIcon", T_REF, MIPMAP_LAUNCHER, R["roundIcon"]),
             a("theme", T_REF, THEME_MATERIAL_LIGHT_NOACTIONBAR, R["theme"]),
@@ -168,7 +168,7 @@ def main():
     signer_dir = os.path.join(OUT, "signer")
     os.makedirs(signer_dir)
     run(["javac", "-nowarn", "-cp", APKSIG_JAR, "-d", signer_dir, os.path.join(ROOT, "build", "Sign.java")])
-    final = os.path.join(ROOT, "Anwesenheit.apk")
+    final = os.path.join(ROOT, "Group-Checkan.apk")
     run(["java", "--add-exports=java.base/sun.security.x509=ALL-UNNAMED", "--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED", "--add-exports=java.base/sun.security.util=ALL-UNNAMED", "-cp", APKSIG_JAR + os.pathsep + signer_dir, "Sign", ks, kpass, "anwesenheit", unsigned, final])
     print("APK:", final, os.path.getsize(final), "bytes")
 

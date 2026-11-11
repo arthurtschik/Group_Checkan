@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Anwesenheit</title>
+<title>Group Checkan</title>
 <style>
 :root{
   --bg:#f4f6fb; --surface:#ffffff; --surface2:#eef1f7; --text:#18202f; --muted:#6b7488; --line:#e2e6ef;
@@ -319,6 +319,16 @@ nav.bottom button .pill{position:relative}
 .cfoot{background:var(--surface);border-top:1px solid var(--line);padding:12px 18px calc(14px + env(safe-area-inset-bottom))}
 .ccheck{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin-bottom:10px;line-height:1.35}
 .ccheck input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--primary)}
+.pchecks{display:flex;flex-direction:column;gap:6px}
+.pchk{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:12px;padding:9px 12px;cursor:pointer}
+.pchk input{display:none}
+.pchk .pn{flex:1;min-width:0;font-weight:650}
+.pchk .pn small{display:block;font-weight:400;color:var(--muted);font-size:12.5px}
+.pchk .cb{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:none;position:relative;background:var(--surface)}
+.pchk input:checked~.cb{background:var(--primary);border-color:var(--primary)}
+.pchk input:checked~.cb::after{content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+#rtPWrap{transition:opacity .2s}
+.field label.pchk{display:flex;margin:0;font-size:16px;font-weight:400;color:var(--text)}
 .optlist button{width:100%;border:0;background:none;display:flex;align-items:center;gap:14px;padding:14px 4px;border-radius:12px;text-align:left;font-size:16px}
 .optlist button:active{background:var(--surface2)}
 .optlist button svg{width:24px;height:24px;color:var(--primary)}
@@ -477,6 +487,7 @@ function load(){
   else ROOT={format:2,active:null,profiles:[{id:uid(),name:"Profil 1",color:0,db:parsed&&parsed.kids?parsed:emptyDB()}]};
   if(!ROOT.profiles.some(p=>p.id===ROOT.active)) ROOT.active=ROOT.profiles[0].id;
   if(!ROOT.settings) ROOT.settings={};
+  migrateRetention();
   activateProfile(ROOT.active);
   if(dedupeKids()) saveNow();
   applyRetention();
@@ -573,32 +584,30 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 /* ---------- Settings tab ---------- */
 const APP_VERSION=(()=>{try{return (N&&N.version&&N.version())||"dev"}catch(e){return "dev"}})();
-const REPO_URL="https://github.com/arthurtschik/Grupp-Checkan";
+const REPO_URL="https://github.com/arthurtschik/Group_Checkan";
 const TERMS_VERSION=1;
 const verParts=v=>String(v||"").replace(/^[^\d]*/,"").split(/[.\-]/).map(x=>parseInt(x,10)||0);
 function isNewer(a,b){const x=verParts(a),y=verParts(b);for(let i=0;i<Math.max(x.length,y.length);i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)>(y[i]||0)}return false}
 const UPD={state:"idle",info:null,pct:0,err:""};   // idle|checking|current|available|downloading|ready|permission|error
 const setRow=(id,icon,title,sub,extra)=>`<button class="srow" id="${id}">${icon}<span><b>${title}</b>${sub?`<small>${sub}</small>`:""}</span>${extra||I.right}</button>`;
 function renderSettings(){
-  setHeader("Einstellungen",`Grupp-Checkan · Version ${APP_VERSION}`,"");
-  const rm=DB.settings.retentionMonths||0, gn=DB.settings.groupNames||{}, renamed=Object.keys(gn).length;
+  setHeader("Einstellungen",`Group Checkan · Version ${APP_VERSION}`,"");
+  const rt=retSettings(), rp=retProfiles();
   let h=`<div class="section-h">App-Update</div><div class="scard" id="updCard">${updateCardHtml()}</div>
-    <div class="section-h">Profil „${esc(activeProfile().name)}“</div><div class="scard">
-      ${setRow("sGroups",I.edit,"Gruppen umbenennen",renamed?`${renamed} ${renamed===1?"Gruppe":"Gruppen"} umbenannt`:"Standardnamen")}
-      ${setRow("sRetention",I.trash,"Alte Einträge automatisch löschen",rm?`Aktiv: älter als ${retLabel(rm)}`:"Aus")}
-      ${setRow("sBackup",I.backup,"Datensicherung erstellen","Optional mit Passwort")}
+    <div class="section-h">Daten & Profile</div><div class="scard">
+      ${setRow("sBackup",I.backup,"Datensicherung erstellen","Alle oder ausgewählte Profile, optional mit Passwort")}
       ${setRow("sRestore",I.save,"Datensicherung wiederherstellen","")}
+      ${setRow("sRetention",I.trash,"Alte Einträge automatisch löschen",rt.months?`Älter als ${retLabel(rt.months)} · ${rt.profiles==="all"?"alle Profile":`${rp.length} von ${ROOT.profiles.length} Profilen`}`:"Aus")}
       ${setRow("sProfiles",I.users,"Profile verwalten",`${ROOT.profiles.length} ${ROOT.profiles.length===1?"Profil":"Profile"}`)}
     </div>
     <div class="section-h">Rechtliches & Info</div><div class="scard">
       ${setRow("sTerms",I.file,"Nutzungsbedingungen & Haftung","")}
       ${setRow("sPrivacy",I.info,"Datenschutzhinweis","")}
-      ${setRow("sAbout",I.list,"Über Grupp-Checkan",`Version ${APP_VERSION}`)}
+      ${setRow("sAbout",I.list,"Über Group Checkan",`Version ${APP_VERSION}`)}
       ${setRow("sImprint",I.users,"Impressum","")}
     </div><div style="height:16px"></div>`;
   $("#main").innerHTML=h;
   bindUpdateCard();
-  $("#sGroups").onclick=()=>{haptic("light");openGroupNames()};
   $("#sRetention").onclick=()=>{haptic("light");openRetention()};
   $("#sBackup").onclick=()=>{haptic("light");openBackup()};
   $("#sRestore").onclick=()=>{haptic("light");
@@ -609,6 +618,9 @@ function renderSettings(){
   $("#sAbout").onclick=()=>{haptic("light");openAbout()};
   $("#sImprint").onclick=()=>{haptic("light");openImprint()};
 }
+/** Checkbox list of profiles (used by retention and backup). */
+const profileChecks=(id,checked)=>`<div class="pchecks" id="${id}">${ROOT.profiles.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}" ${checked(p)?"checked":""}><span class="ppill static" style="--pc:${PCOLORS[(p.color||0)%PCOLORS.length]}"><span>${esc(initials(p.name))}</span></span><span class="pn">${esc(p.name)}</span><i class="cb"></i></label>`).join("")}</div>`;
+const checkedIds=id=>[...document.querySelectorAll(`#${id} input:checked`)].map(i=>i.value);
 function updateCardHtml(){
   const auto=!!ROOT.settings.autoUpdate, i=UPD.info, last=ROOT.settings.lastUpdateCheck;
   let status="", body="", btn="";
@@ -685,13 +697,13 @@ const CONTACT_MAIL="arthurtschik.business@gmail.com";
 const IMPRINT_HTML=`<h2>Impressum</h2>
 <p>Arthurtschik<br>c/o Block Services<br>Stuttgarter Str. 106<br>70736 Fellbach</p>
 <p>Anfragen: ${CONTACT_MAIL}</p>
-<p class="hint">Grupp-Checkan ist ein privates, nicht-kommerzielles Hobbyprojekt. Der Quellcode steht unter der MIT-Lizenz.</p>`;
+<p class="hint">Group Checkan ist ein privates, nicht-kommerzielles Hobbyprojekt. Der Quellcode steht unter der MIT-Lizenz.</p>`;
 function openImprint(){
   openSheet(`<div class="legal">${IMPRINT_HTML}</div><div class="actions"><button class="btn ghost" id="iMail">E-Mail schreiben</button><button class="btn" onclick="closeSheet()">Schließen</button></div>`);
   $("#iMail").onclick=()=>{haptic("light");N&&N.contactMail&&N.contactMail()};
 }
 function openAbout(){
-  openSheet(`<div class="about"><img src="data:," alt="" style="display:none"><div class="abadge">${I.check}</div><h2>Grupp-Checkan</h2>
+  openSheet(`<div class="about"><img src="data:," alt="" style="display:none"><div class="abadge">${I.check}</div><h2>Group Checkan</h2>
     <p>Version ${esc(APP_VERSION)}</p><p class="hint">Anwesenheit abhaken – schnell, übersichtlich und offline.<br>Ein privates Hobbyprojekt · Quellcode unter MIT-Lizenz</p></div>
     <div class="scard">${setRow("aRepo",I.list,"Projekt auf GitHub","Quellcode, Releases & Infos")}${setRow("aIssues",I.info,"Fehler melden / Ideen","über GitHub Issues")}${setRow("aImprint",I.users,"Impressum","")}</div>
     <div class="hint" style="margin-top:12px;text-align:center">Keine Werbung · kein Tracking · deine Daten bleiben auf dem Gerät</div>
@@ -703,7 +715,7 @@ function openAbout(){
 const TERMS_HTML=`<h2>Nutzungsbedingungen &amp; Haftungsausschluss</h2>
 <p class="hint">Stand: November 2026</p>
 <h3>1. Privates Hobbyprojekt</h3>
-<p>Grupp-Checkan ist ein privates, nicht-kommerzielles Hobbyprojekt. Die App wird kostenlos und „wie sie ist“ zur Verfügung gestellt – ohne Gewähr für Funktion, Fehlerfreiheit, Verfügbarkeit oder Eignung für einen bestimmten Zweck.</p>
+<p>Group Checkan ist ein privates, nicht-kommerzielles Hobbyprojekt. Die App wird kostenlos und „wie sie ist“ zur Verfügung gestellt – ohne Gewähr für Funktion, Fehlerfreiheit, Verfügbarkeit oder Eignung für einen bestimmten Zweck.</p>
 <h3>2. Haftung</h3>
 <p>Für Schäden, die aus der Nutzung der App entstehen – insbesondere für den Verlust von Daten –, wird keine Haftung übernommen, soweit dies gesetzlich zulässig ist. Unberührt bleibt die Haftung für Vorsatz und grobe Fahrlässigkeit sowie für Schäden aus der Verletzung von Leben, Körper oder Gesundheit.</p>
 <h3>3. Datensicherung</h3>
@@ -735,7 +747,7 @@ const PRIVACY_HTML=`<h2>Datenschutzhinweis</h2>
 function showConsentIfNeeded(){
   if((ROOT.settings.termsAccepted||0)>=TERMS_VERSION) return;
   const ov=document.createElement("div"); ov.className="consent"; ov.id="consent";
-  ov.innerHTML=`<div class="cwrap"><div class="chead"><div class="abadge">${I.check}</div><h1>Willkommen bei Grupp-Checkan</h1>
+  ov.innerHTML=`<div class="cwrap"><div class="chead"><div class="abadge">${I.check}</div><h1>Willkommen bei Group Checkan</h1>
       <p>Bevor es losgeht, lies bitte kurz die folgenden Hinweise.</p></div>
     <div class="legal">${TERMS_HTML}<hr>${PRIVACY_HTML}</div></div>
     <div class="cfoot">
@@ -1042,10 +1054,11 @@ function persons(){
   return [...m.values()].sort(cmpBy(sortMode("master")));
 }
 /** Removes accidental duplicates (same child twice on the same weekday). */
-function dedupeKids(){
-  const seen=new Set(), before=DB.kids.length;
-  DB.kids=DB.kids.filter(k=>{const id=pkey(k)+"#"+k.day;if(seen.has(id))return false;seen.add(id);return true});
-  return before-DB.kids.length;
+function dedupeKids(db){
+  db=db||DB;
+  const seen=new Set(), before=db.kids.length;
+  db.kids=db.kids.filter(k=>{const id=pkey(k)+"#"+k.day;if(seen.has(id))return false;seen.add(id);return true});
+  return before-db.kids.length;
 }
 const daysLabel=days=>days.length===5?"Mo–Fr":days.map(w=>WD_SHORT[w]).join(" ");
 function renderMaster(){
@@ -1205,9 +1218,11 @@ function openMasterMenu(){
   openSheet(`<h2>Optionen</h2><div class="optlist">
     ${all?"":`<button id="oCopy">${I.copy}<span>Liste von ${WD_LONG[wd]} kopieren<small>Alle Kinder dieses Tages auf andere Tage übernehmen</small></span></button>
     <button id="oExpDay">${I.file}<span>Liste von ${WD_LONG[wd]} exportieren<small>Alle Kinder dieses Tages als Textdatei</small></span></button>`}
+    <button id="oGroups">${I.edit}<span>Gruppen umbenennen<small>Eigene Namen für die Gruppen dieses Profils</small></span></button>
     <button id="oExpPersons">${I.users}<span>Gesamtliste aller Kinder exportieren<small>Jedes Kind einmal, mit seinen Wochentagen</small></span></button>
     <button id="oExpAll">${I.list}<span>Gesamtübersicht exportieren<small>Alle Kinderlisten von Montag bis Freitag als Textdatei</small></span></button>
-  </div><div class="hint" style="text-align:center;margin-top:8px">Gruppen, Datensicherung und weitere Einstellungen findest du im Tab „Einstellungen“.</div>`);
+  </div><div class="hint" style="text-align:center;margin-top:8px">Datensicherung und allgemeine Einstellungen findest du im Tab „Einstellungen“.</div>`);
+  $("#oGroups").onclick=()=>{haptic("light");openGroupNames()};
   $("#oExpPersons").onclick=()=>{haptic("light");openTextSheet("Gesamtliste aller Kinder",buildPersonsText(),"Kinder_Gesamtliste.txt")};
   if(!all) $("#oCopy").onclick=()=>{haptic("tick");openCopyDay(wd)};
   if(!all) $("#oExpDay").onclick=()=>{haptic("light");openTextSheet(`Liste · ${WD_LONG[wd]}`,buildRosterText([wd]),`Kinderliste_${WD_LONG[wd]}.txt`)};
@@ -1226,28 +1241,58 @@ function openCopyDay(from){
     save();haptic("success");closeSheet();renderMaster();showToast(`${n} ${n===1?"Kind":"Kinder"} kopiert`);
   };
 }
-/* ---------- Retention (automatic deletion of old attendance entries) ---------- */
-const RET_OPTIONS=[0,1,3,6,12,24];
+/* ---------- Retention (automatic deletion of old attendance entries) ----------
+   Global setting: ROOT.settings.retention = {months, profiles:"all"|[profile ids]} */
+const RET_OPTIONS=[1,3,6,12,24];
 const retLabel=m=>m===1?"1 Monat":m+" Monate";
 function retCutoff(m){const t=new Date();t.setHours(0,0,0,0);return iso(new Date(t.getFullYear(),t.getMonth()-m,t.getDate()))}
-const oldRecordKeys=m=>{const c=retCutoff(m);return Object.keys(DB.records).filter(k=>k<c)};
-/** Deletes attendance entries older than the configured period; master data is never touched. */
+const retSettings=()=>ROOT.settings.retention||{months:0,profiles:"all"};
+const retProfiles=(rt)=>{rt=rt||retSettings();return ROOT.profiles.filter(p=>rt.profiles==="all"||(Array.isArray(rt.profiles)&&rt.profiles.includes(p.id)))};
+const profDb=p=>p.id===ROOT.active?DB:(p.db||{records:{}});
+const oldKeysOf=(p,m)=>{const c=retCutoff(m),r=profDb(p).records||{};return Object.keys(r).filter(k=>k<c)};
+/** Deletes attendance entries older than the configured period in the selected profiles; master data is never touched. */
 function applyRetention(){
-  const m=DB.settings&&DB.settings.retentionMonths; if(!m) return 0;
-  const old=oldRecordKeys(m); old.forEach(k=>delete DB.records[k]); if(old.length) saveNow(); return old.length;
+  const rt=retSettings(); if(!rt.months) return 0;
+  let n=0;
+  for(const p of retProfiles(rt)){const db=profDb(p);for(const k of oldKeysOf(p,rt.months)){delete db.records[k];n++}}
+  if(n) saveNow(); return n;
+}
+/** Moves the old per-profile setting (version 2.2–2.4) into the global one. */
+function migrateRetention(){
+  if(ROOT.settings.retention) return;
+  const withRet=ROOT.profiles.filter(p=>p.db&&p.db.settings&&p.db.settings.retentionMonths);
+  ROOT.settings.retention=withRet.length?{months:Math.max(...withRet.map(p=>p.db.settings.retentionMonths)),profiles:withRet.length===ROOT.profiles.length?"all":withRet.map(p=>p.id)}:{months:0,profiles:"all"};
+  ROOT.profiles.forEach(p=>{if(p.db&&p.db.settings) delete p.db.settings.retentionMonths});
 }
 function openRetention(){
-  const cur=DB.settings.retentionMonths||0;
+  const rt=retSettings(); let months=rt.months;
+  const sel=new Set(retProfiles(rt).map(p=>p.id));
+  const affected=(m,ids)=>m?ROOT.profiles.filter(p=>ids.includes(p.id)).reduce((a,p)=>a+oldKeysOf(p,m).length,0):0;
   openSheet(`<h2>Alte Einträge automatisch löschen</h2>
-    <p class="hint" style="margin:-6px 0 12px">Erfasste Anwesenheiten, die älter sind als der gewählte Zeitraum, werden automatisch gelöscht. Stammdaten (Kinder, Gruppen) bleiben erhalten. Gilt für das Profil „${esc(activeProfile().name)}“.</p>
-    <div class="optlist radio">${RET_OPTIONS.map(m=>`<button data-m="${m}" class="${m===cur?"sel":""}"><span>${m?"Älter als "+retLabel(m):"Aus – nichts automatisch löschen"}${m?`<small>${(n=>n?n+(n===1?" erfasster Tag wäre":" erfasste Tage wären")+" jetzt betroffen":"Derzeit nichts betroffen")(oldRecordKeys(m).length)}</small>`:""}</span><i class="radio-dot"></i></button>`).join("")}</div>`);
-  document.querySelectorAll(".optlist.radio button").forEach(b=>b.onclick=()=>{
-    const m=+b.dataset.m, n=m?oldRecordKeys(m).length:0;
-    const apply=()=>{DB.settings.retentionMonths=m;const del=applyRetention();save();haptic("success");closeSheet();
-      showToast(m?`Automatisches Löschen aktiv (älter als ${retLabel(m)})${del?` – ${del} ${del===1?"Tag":"Tage"} gelöscht`:""}`:"Automatisches Löschen ausgeschaltet");render()};
-    if(n){haptic("warn");confirmSheet(`${n} ${n===1?"erfassten Tag":"erfasste Tage"} löschen?`,`Mit dieser Einstellung werden alle Anwesenheiten vor dem ${fmtDate(fromIso(retCutoff(m)))} jetzt und künftig automatisch gelöscht. Das lässt sich nicht rückgängig machen.`,"Aktivieren & löschen",apply)}
-    else{haptic("tick");apply()}
-  });
+    <p class="hint" style="margin:-6px 0 12px">Erfasste Anwesenheiten, die älter sind als der gewählte Zeitraum, werden automatisch gelöscht. Stammdaten (Kinder, Gruppen) bleiben immer erhalten.</p>
+    <div class="field"><label>Zeitraum</label><div class="optlist radio" id="rtM">
+      <button data-m="0" class="${!months?"sel":""}"><span>Aus – nichts automatisch löschen</span><i class="radio-dot"></i></button>
+      ${RET_OPTIONS.map(m=>`<button data-m="${m}" class="${m===months?"sel":""}"><span>Älter als ${retLabel(m)}<small data-cnt="${m}"></small></span><i class="radio-dot"></i></button>`).join("")}</div></div>
+    <div class="field" id="rtPWrap"><label>Gilt für diese Profile</label>${profileChecks("rtP",p=>sel.has(p.id))}
+      <div class="hint">Sind alle Profile gewählt, gilt die Einstellung auch für später angelegte Profile.</div></div>
+    <div class="actions"><button class="btn ghost" id="rtCancel">Abbrechen</button><button class="btn" id="rtSave">Speichern</button></div>`);
+  const upd=()=>{const ids=checkedIds("rtP");
+    document.querySelectorAll("#rtM [data-cnt]").forEach(el=>{const n=affected(+el.dataset.cnt,ids);el.textContent=n?`${n} ${n===1?"erfasster Tag wäre":"erfasste Tage wären"} jetzt betroffen`:"Derzeit nichts betroffen"});
+    $("#rtPWrap").style.opacity=months?"1":".45"};
+  upd();
+  document.querySelectorAll("#rtM button").forEach(b=>b.onclick=()=>{haptic("tick");months=+b.dataset.m;document.querySelectorAll("#rtM button").forEach(x=>x.classList.toggle("sel",x===b));upd()});
+  document.querySelectorAll("#rtP input").forEach(i=>i.onchange=()=>{haptic("tick");upd()});
+  $("#rtCancel").onclick=()=>{haptic("tick");closeSheet()};
+  $("#rtSave").onclick=()=>{
+    const ids=checkedIds("rtP");
+    if(months&&!ids.length){haptic("warn");showToast("Bitte mindestens ein Profil wählen");return}
+    const next={months,profiles:ids.length===ROOT.profiles.length?"all":ids};
+    const n=affected(months,ids);
+    const apply=()=>{ROOT.settings.retention=next;const del=applyRetention();saveNow();haptic("success");closeSheet();
+      showToast(months?`Automatisches Löschen aktiv (älter als ${retLabel(months)})${del?` – ${del} ${del===1?"Tag":"Tage"} gelöscht`:""}`:"Automatisches Löschen ausgeschaltet");render()};
+    if(n){haptic("warn");confirmSheet(`${n} ${n===1?"erfassten Tag":"erfasste Tage"} löschen?`,`Mit dieser Einstellung werden in den gewählten Profilen alle Anwesenheiten vor dem ${fmtDate(fromIso(retCutoff(months)))} jetzt und künftig automatisch gelöscht. Das lässt sich nicht rückgängig machen.`,"Aktivieren & löschen",apply)}
+    else apply();
+  };
 }
 
 /* ---------- Backup (optionally password-encrypted with AES-GCM, key from PBKDF2-SHA256) ---------- */
@@ -1261,7 +1306,7 @@ async function pwKey(pw,salt,iter){
 async function encryptBackup(json,pw){
   const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
   const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},await pwKey(pw,salt,PBKDF2_ITER),new TextEncoder().encode(json));
-  return JSON.stringify({app:"grupp-checkan",type:"backup-encrypted",v:1,kdf:{name:"PBKDF2",hash:"SHA-256",iter:PBKDF2_ITER,salt:b64(salt)},cipher:"AES-GCM",iv:b64(iv),data:b64(ct)});
+  return JSON.stringify({app:"group-checkan",type:"backup-encrypted",v:1,kdf:{name:"PBKDF2",hash:"SHA-256",iter:PBKDF2_ITER,salt:b64(salt)},cipher:"AES-GCM",iv:b64(iv),data:b64(ct)});
 }
 async function decryptBackup(o,pw){
   const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(o.iv)},await pwKey(pw,unb64(o.kdf.salt),o.kdf.iter),unb64(o.data));
@@ -1271,7 +1316,8 @@ const cryptoOk=()=>!!(window.crypto&&crypto.subtle);
 function openBackup(){
   saveNow();
   openSheet(`<h2>Datensicherung erstellen</h2>
-    <p class="hint" style="margin:-6px 0 14px">Sichert Stammdaten, Gruppen und Anwesenheiten des Profils „${esc(activeProfile().name)}“ in eine Datei.</p>
+    <p class="hint" style="margin:-6px 0 14px">Sichert Stammdaten, Gruppen, Anwesenheiten und Einstellungen der gewählten Profile in eine Datei.</p>
+    <div class="field"><label>Profile</label>${profileChecks("bP",()=>true)}</div>
     <label class="switchrow"><span>Mit Passwort verschlüsseln<small>Die Datei ist ohne Passwort nicht lesbar</small></span><input type="checkbox" id="bEnc"><i class="switch"></i></label>
     <div id="bPw" style="display:none">
       <div class="field"><label>Passwort</label><input type="password" id="bPw1" autocomplete="new-password" placeholder="mindestens 6 Zeichen"></div>
@@ -1279,18 +1325,26 @@ function openBackup(){
       <div class="hint" style="margin:-6px 0 14px">Wichtig: Ohne dieses Passwort lässt sich die Sicherung nicht wiederherstellen – es kann nicht zurückgesetzt werden.</div>
     </div>
     <div class="actions"><button class="btn ghost" id="bCancel">Abbrechen</button><button class="btn" id="bSave">${I.save} Speichern</button></div>`);
+  document.querySelectorAll("#bP input").forEach(i=>i.onchange=()=>haptic("tick"));
   $("#bEnc").onchange=()=>{haptic("tick");$("#bPw").style.display=$("#bEnc").checked?"":"none";if($("#bEnc").checked)setTimeout(()=>$("#bPw1").focus(),50)};
   $("#bCancel").onclick=()=>{haptic("tick");closeSheet()};
   $("#bSave").onclick=async()=>{
-    const enc=$("#bEnc").checked, base="Anwesenheit_Sicherung_"+iso(new Date())+"_"+activeProfile().name.replace(/[^\wäöüÄÖÜß-]+/g,"_");
-    let text=JSON.stringify(DB,null,1), name=base+".json";
+    const ids=checkedIds("bP");
+    if(!ids.length){haptic("warn");showToast("Bitte mindestens ein Profil wählen");return}
+    saveNow();
+    const profs=ROOT.profiles.filter(p=>ids.includes(p.id));
+    const payload={app:"group-checkan",type:"backup",v:2,created:new Date().toISOString(),
+      profiles:profs.map(p=>({id:p.id,name:p.name,color:p.color,db:p.db}))};
+    const enc=$("#bEnc").checked, safe=n=>n.replace(/[^\wäöüÄÖÜß-]+/g,"_");
+    const base="GroupCheckan_Sicherung_"+iso(new Date())+"_"+(profs.length===ROOT.profiles.length?"alle_Profile":profs.map(p=>safe(p.name)).join("+"));
+    let text=JSON.stringify(payload,null,1), name=base+".json";
     if(enc){
       const p1=$("#bPw1").value, p2=$("#bPw2").value;
       if(p1.length<6){haptic("warn");showToast("Passwort: mindestens 6 Zeichen");$("#bPw1").focus();return}
       if(p1!==p2){haptic("warn");showToast("Die Passwörter stimmen nicht überein");$("#bPw2").focus();return}
       if(!cryptoOk()){haptic("warn");showToast("Verschlüsselung wird auf diesem Gerät nicht unterstützt");return}
       $("#bSave").disabled=true; $("#bSave").textContent="Verschlüssele …";
-      text=await encryptBackup(JSON.stringify(DB),p1); name=base+"_verschluesselt.json";
+      text=await encryptBackup(JSON.stringify(payload),p1); name=base+"_verschluesselt.json";
     }
     closeSheet();
     if(N&&N.saveFile) N.saveFile(name,text,"application/json"); else downloadFallback(name,text);
@@ -1316,11 +1370,40 @@ window.onFileOpened=function(text){
   restoreFromText(text);
 };
 function restoreFromText(text){
-  try{
-    const d=JSON.parse(text); if(!d||!Array.isArray(d.kids)||typeof d.records!=="object") throw 0;
-    confirmSheet("Sicherung wiederherstellen?",`Die aktuellen Daten werden durch die Sicherung ersetzt (${d.kids.length} Einträge in den Stammdaten, ${Object.keys(d.records).length} erfasste Tage).`,"Wiederherstellen",()=>{
-      DB=Object.assign({version:1,kids:[],records:{},settings:{}},d);if(!DB.settings)DB.settings={};dedupeKids();saveNow();haptic("success");closeSheet();render();showToast("Sicherung wiederhergestellt")});
-  }catch(e){haptic("warn");showToast("Datei ist keine gültige Sicherung")}
+  let d; try{ d=JSON.parse(text) }catch(e){ d=null }
+  // format from version 2.5: several profiles
+  if(d&&d.type==="backup"&&Array.isArray(d.profiles)&&d.profiles.length){ restoreProfiles(d.profiles); return }
+  // older format: data of a single profile → into the active profile
+  if(!d||!Array.isArray(d.kids)||typeof d.records!=="object"){haptic("warn");showToast("Datei ist keine gültige Sicherung");return}
+  confirmSheet("Sicherung wiederherstellen?",`Die Daten des Profils „${activeProfile().name}“ werden durch die Sicherung ersetzt (${new Set(d.kids.map(pkey)).size} Kinder, ${Object.keys(d.records).length} erfasste Tage).`,"Wiederherstellen",()=>{
+    DB=normalizeDB(d);dedupeKids();saveNow();haptic("success");closeSheet();render();showToast("Sicherung wiederhergestellt")});
+}
+function restoreProfiles(list){
+  const exists=bp=>ROOT.profiles.find(p=>p.id===bp.id);
+  openSheet(`<h2>Sicherung wiederherstellen</h2>
+    <p class="hint" style="margin:-6px 0 12px">Wähle die Profile aus, die wiederhergestellt werden sollen.</p>
+    <div class="pchecks" id="rsP">${list.map((bp,i)=>`<label class="pchk"><input type="checkbox" value="${i}" checked><span class="ppill static" style="--pc:${PCOLORS[(bp.color||0)%PCOLORS.length]}"><span>${esc(initials(bp.name))}</span></span><span class="pn">${esc(bp.name)}<small>${(n=>n+(n===1?" Kind":" Kinder"))(bp.db&&bp.db.kids?new Set(bp.db.kids.map(pkey)).size:0)} · ${exists(bp)?"ersetzt das vorhandene Profil":"wird neu angelegt"}</small></span><i class="cb"></i></label>`).join("")}</div>
+    <div class="actions" style="margin-top:14px"><button class="btn ghost" id="rsCancel">Abbrechen</button><button class="btn" id="rsOk">Wiederherstellen</button></div>`);
+  document.querySelectorAll("#rsP input").forEach(i=>i.onchange=()=>haptic("tick"));
+  $("#rsCancel").onclick=()=>{haptic("tick");closeSheet()};
+  $("#rsOk").onclick=()=>{
+    const chosen=checkedIds("rsP").map(i=>list[+i]);
+    if(!chosen.length){haptic("warn");showToast("Bitte mindestens ein Profil wählen");return}
+    const replaced=chosen.filter(exists).length;
+    const doIt=()=>{
+      saveNow();
+      for(const bp of chosen){
+        const db=normalizeDB(bp.db); dedupeKids(db);
+        const cur=exists(bp);
+        if(cur){cur.name=bp.name||cur.name;cur.color=bp.color??cur.color;cur.db=db}
+        else ROOT.profiles.push({id:bp.id||uid(),name:bp.name||"Profil",color:bp.color||0,db});
+      }
+      activateProfile(ROOT.active); saveNow(); updatePill(0); haptic("success"); closeSheet(); render();
+      showToast(`${chosen.length} ${chosen.length===1?"Profil":"Profile"} wiederhergestellt`);
+    };
+    if(replaced){haptic("warn");confirmSheet("Vorhandene Daten ersetzen?",`${replaced} ${replaced===1?"vorhandenes Profil wird":"vorhandene Profile werden"} durch den Stand der Sicherung ersetzt. Das lässt sich nicht rückgängig machen.`,"Ersetzen",doIt)}
+    else doIt();
+  };
 }
 
 /* ---------- Export ---------- */

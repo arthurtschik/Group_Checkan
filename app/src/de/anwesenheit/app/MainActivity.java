@@ -292,10 +292,17 @@ public class MainActivity extends Activity {
      * Only these fixed addresses are ever contacted, and only for the update check/download.
      * No app data is sent. Android itself refuses an update that is not signed with the same key.
      */
-    private static final String REPO = "arthurtschik/Grupp-Checkan";
-    private static final String API_LATEST = "https://api.github.com/repos/" + REPO + "/releases/latest";
-    private static final String DOWNLOAD_PREFIX = "https://github.com/" + REPO + "/releases/download/";
-    private static final String WEB_PREFIX = "https://github.com/" + REPO;
+    // The numeric repository id stays the same when the repository is renamed.
+    private static final String API_LATEST = "https://api.github.com/repositories/1452715470/releases/latest";
+    private static final String OWNER_PREFIX = "https://github.com/arthurtschik/";
+    private static final String WEB_PREFIX = "https://github.com/arthurtschik/Group_Checkan";
+
+    /** Release assets of this owner only (repository name may change), HTTPS, .apk */
+    private static boolean isOwnApk(String u) {
+        if (u == null) return false;
+        String l = u.toLowerCase();
+        return l.startsWith(OWNER_PREFIX.toLowerCase()) && l.contains("/releases/download/") && l.endsWith(".apk");
+    }
     private volatile boolean downloading = false;
 
     private String appVersion() {
@@ -310,7 +317,7 @@ public class MainActivity extends Activity {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
-        c.setRequestProperty("User-Agent", "Grupp-Checkan-App/" + appVersion());
+        c.setRequestProperty("User-Agent", "Group-Checkan-App/" + appVersion());
         c.setRequestProperty("Accept", "application/vnd.github+json");
         c.setInstanceFollowRedirects(true);
         return c;
@@ -335,7 +342,7 @@ public class MainActivity extends Activity {
                     for (int i = 0; assets != null && i < assets.length(); i++) {
                         JSONObject a = assets.getJSONObject(i);
                         String u = a.optString("browser_download_url");
-                        if (u.endsWith(".apk") && u.startsWith(DOWNLOAD_PREFIX)) {
+                        if (isOwnApk(u)) {
                             r.put("apk", u);
                             r.put("size", a.optLong("size"));
                             break;
@@ -351,7 +358,7 @@ public class MainActivity extends Activity {
 
     private void downloadUpdate(final String url) {
         if (downloading) return;
-        if (url == null || !url.startsWith(DOWNLOAD_PREFIX) || !url.endsWith(".apk")) {
+        if (!isOwnApk(url)) {
             notifyJs("Ungültige Update-Adresse", false);
             return;
         }
@@ -448,7 +455,7 @@ public class MainActivity extends Activity {
         /** Opens a page of this project's GitHub repository in the browser (nothing else is allowed). */
         @JavascriptInterface
         public void openRepoPage(String url) {
-            if (url == null || !(url.equals(WEB_PREFIX) || url.startsWith(WEB_PREFIX + "/"))) return;
+            if (url == null || !(url.equalsIgnoreCase(WEB_PREFIX) || url.toLowerCase().startsWith(WEB_PREFIX.toLowerCase() + "/"))) return;
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (Exception ignored) {
@@ -459,7 +466,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void contactMail() {
             Intent i = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:arthurtschik.business@gmail.com"));
-            i.putExtra(Intent.EXTRA_SUBJECT, "Grupp-Checkan " + appVersion());
+            i.putExtra(Intent.EXTRA_SUBJECT, "Group Checkan " + appVersion());
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try {
                 startActivity(i);
