@@ -16,7 +16,7 @@ OUT = os.path.join(ROOT, "out")
 GEN = os.path.join(OUT, "gen")
 
 PKG = "de.anwesenheit.app"
-VERSION_CODE, VERSION_NAME = 16, "2.5"
+VERSION_CODE, VERSION_NAME = 17, "2.6"
 MIN_SDK, TARGET_SDK = 24, 34
 
 # android attribute ids (from android.R.attr)

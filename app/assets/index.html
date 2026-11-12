@@ -247,8 +247,19 @@ nav.bottom button.active .pill{background:var(--primary-soft);color:var(--primar
 .sheet .actions .btn{flex:1}
 .gemo{line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .gprev{width:26px;display:flex;justify-content:center;flex:none}
+.grow{display:flex;align-items:center;gap:10px}
+.grow .gin{flex:1;min-width:0}
+.grow .gin small{display:block;font-size:12px;color:var(--muted);margin:3px 0 0 4px}
+.grow.del input{text-decoration:line-through;opacity:.55}
+.grow.del .gin small{color:var(--sick)}
+.grow .act{width:40px;height:40px;flex:none}
+.grow .act svg{width:20px;height:20px}
+.grow:not(.del) .act{color:var(--sick)}
+#gAdd:disabled{opacity:.5}
 .gnames{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .gname{display:flex;align-items:center;gap:12px}
+.grow input{width:100%;border:1.5px solid var(--line);background:var(--surface2);border-radius:12px;padding:10px 12px;outline:none;-webkit-user-select:text;user-select:text}
+.grow input:focus{border-color:var(--primary);background:var(--surface)}
 .gname input{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--surface2);border-radius:12px;padding:10px 12px;outline:none;-webkit-user-select:text;user-select:text}
 .gname input:focus{border-color:var(--primary);background:var(--surface)}
 .switchrow{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:14px;padding:12px 14px;margin-bottom:14px;cursor:pointer}
@@ -390,6 +401,7 @@ const I = {
   list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>',
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>'
 };
 
@@ -404,8 +416,11 @@ const COLORS=[
   {id:"gelb",name:"Gelb",c:"#facc15"},{id:"gruen",name:"Grün",c:"#22c55e"}
 ];
 const NO_COLOR={id:"",name:"Ohne Gruppe",c:"#9ca3af"};
-/** Group names can be renamed per profile (DB.settings.groupNames); the colours and ids stay the same. */
-const groupName=c=>{const n=DB&&DB.settings&&DB.settings.groupNames&&DB.settings.groupNames[c.id];return (n&&n.trim())||c.name};
+/* Groups are a free list per profile: DB.settings.groups = [{id, name}].
+   Profiles from before version 2.6 get the 8 former colour groups (with their custom names), ids unchanged. */
+const MAX_GROUPS=24;
+function defaultGroups(names){names=names||{};return COLORS.map(c=>({id:c.id,name:((names[c.id]||"").trim())||c.name}))}
+const groupList=db=>{db=db||DB;if(!db.settings.groups)db.settings.groups=defaultGroups(db.settings.groupNames);return db.settings.groups};
 /* Group look derived from its name: colour words set the colour, known words (animals, nature …) get an emoji.
    Names that match nothing keep the slot's own distinct colour. Longer stems first so "hellblau" wins over "blau". */
 const COLOR_WORDS=[["dunkelblau","#1d4ed8"],["hellblau","#38bdf8"],["himmelblau","#38bdf8"],["dunkelgrün","#15803d"],["hellgrün","#84cc16"],
@@ -439,15 +454,15 @@ function lookOf(name){
 }
 const EXTRA_COLORS=["#ef4444","#f97316","#facc15","#22c55e","#38bdf8","#1d4ed8","#a855f7","#ec4899","#14b8a6","#a16207","#84cc16","#6366f1","#f43f5e","#78716c"];
 /** Looks for all groups at once, so groups without a colour word never share a colour with another group. */
-function groupLooks(){
-  const looks=COLORS.map(c=>({c,name:groupName(c),...lookOf(groupName(c))}));
+function groupLooks(list){
+  const looks=(list||groupList()).map(g=>{const base=(COLORS.find(c=>c.id===g.id)||{}).c;return {g,name:g.name,base,...lookOf(g.name)}});
   const used=new Set(looks.filter(l=>l.color).map(l=>l.color));
-  for(const l of looks) if(!l.color&&!used.has(l.c.c)){l.color=l.c.c;used.add(l.c.c)}   // keep own colour if free
-  for(const l of looks) if(!l.color){const col=EXTRA_COLORS.find(x=>!used.has(x))||l.c.c;l.color=col;used.add(col)}
+  for(const l of looks) if(!l.color&&l.base&&!used.has(l.base)){l.color=l.base;used.add(l.base)}   // former colour groups keep their colour if free
+  for(const l of looks) if(!l.color){const col=EXTRA_COLORS.find(x=>!used.has(x))||EXTRA_COLORS[looks.indexOf(l)%EXTRA_COLORS.length];l.color=col;used.add(col)}
   return looks;
 }
-const colorOf=id=>{const c=COLORS.find(c=>c.id===id);if(!c)return NO_COLOR;const l=groupLooks().find(x=>x.c.id===id);
-  return {...c,name:l.name,c:l.color,emoji:l.emoji}};
+const colorOf=id=>{if(!id)return NO_COLOR;const l=groupLooks().find(x=>x.g.id===id);if(!l)return NO_COLOR;
+  return {id,name:l.name,c:l.color,emoji:l.emoji}};
 /** Small group marker: emoji if the name has one, otherwise a coloured dot. */
 const gBadge=(co,size)=>co.emoji?`<span class="gemo" style="font-size:${Math.round((size||12)*1.15)}px">${co.emoji}</span>`
   :`<span class="dot" style="${size?`width:${size}px;height:${size}px;`:""}background:${co.c}${co.id?"":";box-shadow:inset 0 0 0 1.5px var(--muted);background:transparent"}"></span>`;
@@ -474,6 +489,8 @@ let ROOT={format:2,active:null,profiles:[]};
 const emptyDB=()=>({version:1,kids:[],records:{},settings:{}});
 function normalizeDB(d){
   d=Object.assign(emptyDB(),d||{}); if(!d.settings) d.settings={};
+  if(!d.settings.groups){d.settings.groups=defaultGroups(d.settings.groupNames);}
+  delete d.settings.groupNames;
   const mig=o=>{if(o&&LEGACY_COLORS[o.color]) o.color=LEGACY_COLORS[o.color]};
   d.kids.forEach(mig);
   for(const r of Object.values(d.records)) for(const e of Object.values(r.entries)) mig(e.snap);
@@ -935,7 +952,7 @@ function kidRow(k,key){
   return `<div class="kid ${st}" data-id="${k.id}">
     <span class="bar" style="background:${co.c}"></span>
     <span class="check">${checkIcon}</span>
-    <div class="info"><div class="nline"><span class="name"><span class="fn">${esc(k.first||k.last)}</span></span>${k.color?`<span class="cg">${gBadge(co,8)}${esc(co.name)}</span>`:""}</div>
+    <div class="info"><div class="nline"><span class="name"><span class="fn">${esc(k.first||k.last)}</span></span>${co.id?`<span class="cg">${gBadge(co,8)}${esc(co.name)}</span>`:(k.gname?`<span class="cg">${esc(k.gname)}</span>`:"")}</div>
       <div class="meta">${k.first&&k.last?`<span class="ln">${esc(k.last)}</span>`:""}${k.cls?`<span>Kl. ${esc(k.cls)}</span>`:""}${k.removed?"<span>(entfernt)</span>":""}${tag}</div></div>
     <div class="acts"><button class="act pick" data-act="pickedup" aria-label="Früher abgeholt">${I.home}</button><button class="act sickb" data-act="sick" aria-label="Krank">${I.sick}</button></div>
   </div>`;
@@ -1149,8 +1166,8 @@ function openKidForm(kid){
   const isNew=!kid, group=isNew?[]:entriesOf(pkey(kid));
   const startDays=isNew?(S.mWeekday==="all"?[]:[S.mWeekday]):group.map(k=>k.day);
   const f={first:kid?kid.first:"",last:kid?kid.last:"",color:kid?kid.color:"",cls:kid?kid.cls:"",days:new Set(startDays)};
-  let colorsHtml=COLORS.map(c=>{const co=colorOf(c.id);return `<button type="button" data-c="${c.id}" class="${c.id===f.color?"active":""}">${gBadge(co,18)}${esc(co.name)}</button>`}).join("")
-    +`<button type="button" data-c="" class="${COLORS.some(c=>c.id===f.color)?"":"active"}"><span class="dot" style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)"></span>Keine</button>`;
+  let colorsHtml=groupList().map(g=>{const co=colorOf(g.id);return `<button type="button" data-c="${esc(g.id)}" class="${g.id===f.color?"active":""}">${gBadge(co,18)}${esc(co.name)}</button>`}).join("")
+    +`<button type="button" data-c="" class="${groupList().some(g=>g.id===f.color)?"":"active"}"><span class="dot" style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)"></span>Keine</button>`;
   let daysHtml=[1,2,3,4,5].map(w=>`<button type="button" data-w="${w}" class="${f.days.has(w)?"active":""}">${WD_SHORT[w]}</button>`).join("");
   openSheet(`<h2>${isNew?"Kind hinzufügen":"Kind bearbeiten"}</h2>
     <div class="field"><label>Vorname</label><input id="fFirst" value="${esc(f.first)}" autocomplete="off" autocapitalize="words" enterkeyhint="next"></div>
@@ -1168,7 +1185,7 @@ function openKidForm(kid){
   $("#fSave").onclick=()=>{
     const first=$("#fFirst").value.trim(), last=$("#fLast").value.trim(), cls=$("#fCls").value.trim();
     if(!first&&!last){haptic("warn");$("#fFirst").focus();showToast("Bitte einen Namen eingeben");return}
-    if(!COLORS.some(c=>c.id===f.color)) f.color="";
+    if(!groupList().some(g=>g.id===f.color)) f.color="";
     if(!f.days.size){haptic("warn");showToast("Bitte mindestens einen Wochentag wählen");return}
     const newKey=pkey({first,last});
     // another child with this name already exists → merge into it instead of creating duplicates
@@ -1195,22 +1212,55 @@ function openKidForm(kid){
   if(isNew) setTimeout(()=>$("#fFirst")&&$("#fFirst").focus(),320);
 }
 function openGroupNames(){
-  const names=(DB.settings.groupNames||{});
-  openSheet(`<h2>Gruppen umbenennen</h2>
-    <div class="gnames">${COLORS.map(c=>`<label class="gname"><span class="gprev" data-p="${c.id}">${gBadge(colorOf(c.id),18)}</span>
-      <input data-g="${c.id}" value="${esc(names[c.id]||"")}" placeholder="${esc(c.name)}" autocomplete="off" autocapitalize="sentences" maxlength="30"></label>`).join("")}</div>
-    <div class="hint" style="margin:-4px 0 14px">Farben im Namen (z. B. „Rote Gruppe“) färben die Gruppe passend. Tiere &amp; Co. (z. B. „Füchse“, „Sonnen“) bekommen automatisch ein Symbol. Sonst behält jede Gruppe ihre eigene Farbe. Leer lassen = Standardname, die Zuordnung der Kinder bleibt erhalten.</div>
-    <div class="actions"><button class="btn ghost" id="gReset">Zurücksetzen</button><button class="btn" id="gSave">Speichern</button></div>`);
-  const prevAll=()=>{const saved=DB.settings.groupNames, tmp={};
-    document.querySelectorAll(".gname input").forEach(i=>{if(i.value.trim())tmp[i.dataset.g]=i.value.trim()});
-    DB.settings.groupNames=tmp; const looks=groupLooks(); DB.settings.groupNames=saved;
-    document.querySelectorAll(".gname input").forEach(i=>{const l=looks.find(x=>x.c.id===i.dataset.g);
-      i.parentNode.querySelector(".gprev").innerHTML=gBadge({id:i.dataset.g,c:l.color,emoji:l.emoji},18)})};
-  document.querySelectorAll(".gname input").forEach(i=>i.addEventListener("input",prevAll));
-  $("#gReset").onclick=()=>{haptic("tick");document.querySelectorAll(".gname input").forEach(i=>i.value="");prevAll()};
+  // working copy; nothing is changed until "Speichern"
+  let rows=groupList().map(g=>({id:g.id,name:g.name,orig:g.name,del:false,isNew:false}));
+  const kidsIn=id=>new Set(DB.kids.filter(k=>k.color===id).map(pkey)).size;
+  openSheet(`<h2>Gruppen verwalten</h2>
+    <div class="hint" style="margin:-6px 0 12px">Farben im Namen (z. B. „Rote Gruppe“) färben die Gruppe passend, Tiere &amp; Co. (z. B. „Füchse“) bekommen ein Symbol. Gilt für das Profil „${esc(activeProfile().name)}“.</div>
+    <div class="gnames" id="gList"></div>
+    <button class="btn ghost block" id="gAdd">${I.plus} Gruppe hinzufügen</button>
+    <div class="actions" style="margin-top:14px"><button class="btn ghost" id="gCancel">Abbrechen</button><button class="btn" id="gSave">Speichern</button></div>`);
+  const live=()=>rows.filter(r=>!r.del).map(r=>({id:r.id,name:r.name.trim()||"…"}));
+  const paint=()=>{
+    const looks=groupLooks(live());
+    $("#gList").innerHTML=rows.length?rows.map((r,i)=>{const l=looks.find(x=>x.g.id===r.id), n=r.isNew?0:kidsIn(r.id);
+      return `<div class="grow ${r.del?"del":""}" data-i="${i}" data-g="${esc(r.id)}">
+        <span class="gprev">${r.del?gBadge(NO_COLOR,18):gBadge({id:r.id,c:l.color,emoji:l.emoji},18)}</span>
+        <div class="gin"><input value="${esc(r.name)}" placeholder="Name der Gruppe" maxlength="30" autocomplete="off" autocapitalize="sentences" ${r.del?"disabled":""}>
+          <small>${r.del?(n?`wird gelöscht – ${n} ${n===1?"Kind wird":"Kinder werden"} „Ohne Gruppe“`:"wird gelöscht"):(r.isNew?"neu":(n?`${n} ${n===1?"Kind":"Kinder"}`:"keine Kinder"))}</small></div>
+        <button class="act" data-x="${i}" aria-label="${r.del?"Löschen rückgängig":"Gruppe löschen"}">${r.del?I.undo:I.trash}</button></div>`}).join("")
+      :`<div class="hint" style="text-align:center;padding:10px 0">Noch keine Gruppen – füge eine hinzu.</div>`;
+    $("#gList").querySelectorAll(".grow input").forEach(inp=>{const r=rows[+inp.closest(".grow").dataset.i];
+      inp.oninput=()=>{r.name=inp.value;const lk=groupLooks(live()).find(x=>x.g.id===r.id);inp.closest(".grow").querySelector(".gprev").innerHTML=gBadge({id:r.id,c:lk.color,emoji:lk.emoji},18)}});
+    $("#gList").querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{const i=+b.dataset.x,r=rows[i];
+      if(r.isNew){rows.splice(i,1);haptic("tick")} else {r.del=!r.del;haptic(r.del?"medium":"tick")}
+      paint()});
+    $("#gAdd").disabled=rows.filter(r=>!r.del).length>=MAX_GROUPS;
+  };
+  paint();
+  $("#gAdd").onclick=()=>{haptic("light");rows.push({id:"g"+uid(),name:"",isNew:true,del:false});paint();
+    const ins=$("#gList").querySelectorAll("input");const last=ins[ins.length-1];last.focus();last.scrollIntoView({block:"center",behavior:"smooth"})};
+  $("#gCancel").onclick=()=>{haptic("tick");closeSheet()};
   $("#gSave").onclick=()=>{
-    const gn={}; document.querySelectorAll(".gname input").forEach(i=>{const v=i.value.trim(); if(v&&v!==COLORS.find(c=>c.id===i.dataset.g).name) gn[i.dataset.g]=v});
-    DB.settings.groupNames=gn; save(); haptic("success"); closeSheet(); render(); showToast("Gruppen gespeichert");
+    if(rows.some(r=>!r.del&&!r.isNew&&!r.name.trim())){haptic("warn");showToast("Bitte jeder Gruppe einen Namen geben – oder sie löschen");return}
+    const keep=rows.filter(r=>!r.del&&r.name.trim()), gone=rows.filter(r=>r.del);
+    const names=keep.map(r=>r.name.trim().toLocaleLowerCase("de"));
+    if(new Set(names).size!==names.length){haptic("warn");showToast("Zwei Gruppen haben denselben Namen");return}
+    const affected=gone.reduce((a,r)=>a+kidsIn(r.id),0);
+    const apply=()=>{
+      for(const r of gone){
+        DB.kids.forEach(k=>{if(k.color===r.id)k.color=""});
+        // past entries keep the group name for exports
+        for(const rec of Object.values(DB.records)) for(const e of Object.values(rec.entries)) if(e.snap&&e.snap.color===r.id) e.snap.gname=r.orig;
+        if(S.filter==="g:"+r.id) S.filter="all";
+      }
+      DB.settings.groups=keep.map(r=>({id:r.id,name:r.name.trim()}));
+      save(); haptic("success"); closeSheet(); render();
+      const added=keep.filter(r=>r.isNew).length;
+      showToast([added?`${added} hinzugefügt`:"",gone.length?`${gone.length} gelöscht`:""].filter(Boolean).join(", ")||"Gruppen gespeichert");
+    };
+    if(affected){haptic("warn");confirmSheet(`${gone.length===1?"Gruppe":gone.length+" Gruppen"} löschen?`,`${affected} ${affected===1?"Kind ist":"Kinder sind"} darin eingetragen und ${affected===1?"steht":"stehen"} danach „Ohne Gruppe“. Bereits erfasste Anwesenheiten behalten den Gruppennamen.`,"Löschen",apply)}
+    else apply();
   };
 }
 function openMasterMenu(){
@@ -1218,7 +1268,7 @@ function openMasterMenu(){
   openSheet(`<h2>Optionen</h2><div class="optlist">
     ${all?"":`<button id="oCopy">${I.copy}<span>Liste von ${WD_LONG[wd]} kopieren<small>Alle Kinder dieses Tages auf andere Tage übernehmen</small></span></button>
     <button id="oExpDay">${I.file}<span>Liste von ${WD_LONG[wd]} exportieren<small>Alle Kinder dieses Tages als Textdatei</small></span></button>`}
-    <button id="oGroups">${I.edit}<span>Gruppen umbenennen<small>Eigene Namen für die Gruppen dieses Profils</small></span></button>
+    <button id="oGroups">${I.edit}<span>Gruppen verwalten<small>Gruppen hinzufügen, umbenennen oder löschen</small></span></button>
     <button id="oExpPersons">${I.users}<span>Gesamtliste aller Kinder exportieren<small>Jedes Kind einmal, mit seinen Wochentagen</small></span></button>
     <button id="oExpAll">${I.list}<span>Gesamtübersicht exportieren<small>Alle Kinderlisten von Montag bis Freitag als Textdatei</small></span></button>
   </div><div class="hint" style="text-align:center;margin-top:8px">Datensicherung und allgemeine Einstellungen findest du im Tab „Einstellungen“.</div>`);
@@ -1427,7 +1477,7 @@ function buildRosterText(days){
     if(!kids.length){out.push("  (keine Kinder eingetragen)");continue}
     const head=mode==="first"?["Nr","Vorname","Nachname","Gruppe","Klasse"]:["Nr","Nachname","Vorname","Gruppe","Klasse"];
     const rows=kids.map((k,i)=>{const n=mode==="first"?[k.first||"",k.last||""]:[k.last||"",k.first||""];
-      return [String(i+1),...n,colorOf(k.color).id?colorOf(k.color).name:"-",k.cls||"-"]});
+      return [String(i+1),...n,colorOf(k.color).id?colorOf(k.color).name:(k.gname||"-"),k.cls||"-"]});
     out.push(...textTable(head,rows));
     if(!all) out.push("","Kinder gesamt: "+kids.length);
   }
@@ -1492,7 +1542,7 @@ function buildTable(d){
     if(st==="present"&&e&&e.arrived) s=STATUS.present.sym+" Anwesend ("+e.arrived+")";
     if(st==="pickedup") s=STATUS.pickedup.sym+" Früher abgeholt "+(e?e.time:"");
     if(st==="none") s=STATUS.none.sym+" Nicht erfasst";
-    return [String(i+1),k.last||"",k.first||"",colorOf(k.color).id?colorOf(k.color).name:"-",k.cls||"-",s]});
+    return [String(i+1),k.last||"",k.first||"",colorOf(k.color).id?colorOf(k.color).name:(k.gname||"-"),k.cls||"-",s]});
   const head=["Nr","Nachname","Vorname","Gruppe","Klasse","Status"];
   if(sortMode("today")==="first"){head.splice(1,2,"Vorname","Nachname");rows.forEach(r=>r.splice(1,2,r[2],r[1]))}
   const out=[];

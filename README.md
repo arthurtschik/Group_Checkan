@@ -16,7 +16,7 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
 - **Kalender** – vergangene Tage ansehen, nachtragen und als Text-Tabelle exportieren; Monatsübersicht je Kind
 - **Stammdaten** – Kinder mit Vorname, Nachname, Gruppe (optional) und Klasse je Wochentag
   - Reiter „Alle“ mit Suche, Wischen zum Löschen, Sortierung, Listen kopieren
-  - Gruppen frei benennbar: Farbwörter färben die Gruppe, Tiere & Co. bekommen automatisch ein Emoji
+  - Gruppen frei anlegen, umbenennen und löschen: Farbwörter färben die Gruppe, Tiere & Co. bekommen automatisch ein Emoji
   - Exporte (Tagesliste, Gesamtübersicht, Gesamtliste) und Datensicherung/Wiederherstellung (JSON)
 - **Profile** – getrennte Datenbestände; Pille oben links: antippen = verwalten, nach unten/oben wischen = wechseln
 - **Einstellungen** – nur allgemeine Einstellungen: App-Update direkt aus der App, Datensicherung (alle oder
