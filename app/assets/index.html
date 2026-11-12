@@ -249,6 +249,8 @@ nav.bottom button.active .pill{background:var(--primary-soft);color:var(--primar
 .gprev{width:26px;display:flex;justify-content:center;flex:none}
 .grow{display:flex;align-items:center;gap:10px}
 .grow .gin{flex:1;min-width:0}
+.grow{transition:opacity .18s,transform .18s}
+.grow.gone{opacity:0;transform:translateX(30px)}
 .grow .gin small{display:block;font-size:12px;color:var(--muted);margin:3px 0 0 4px}
 .grow.del input{text-decoration:line-through;opacity:.55}
 .grow.del .gin small{color:var(--sick)}
@@ -1212,56 +1214,73 @@ function openKidForm(kid){
   if(isNew) setTimeout(()=>$("#fFirst")&&$("#fFirst").focus(),320);
 }
 function openGroupNames(){
-  // working copy; nothing is changed until "Speichern"
-  let rows=groupList().map(g=>({id:g.id,name:g.name,orig:g.name,del:false,isNew:false}));
+  // Every change takes effect immediately (no "save" step). New rows become a group once they have a name.
+  const pending=[];                       // new rows not yet named: {id,name}
   const kidsIn=id=>new Set(DB.kids.filter(k=>k.color===id).map(pkey)).size;
+  const dupe=(name,id)=>groupList().some(g=>g.id!==id&&g.name.trim().toLocaleLowerCase("de")===name.toLocaleLowerCase("de"));
   openSheet(`<h2>Gruppen verwalten</h2>
-    <div class="hint" style="margin:-6px 0 12px">Farben im Namen (z. B. „Rote Gruppe“) färben die Gruppe passend, Tiere &amp; Co. (z. B. „Füchse“) bekommen ein Symbol. Gilt für das Profil „${esc(activeProfile().name)}“.</div>
+    <div class="hint" style="margin:-6px 0 12px">Änderungen gelten sofort. Farben im Namen (z. B. „Rote Gruppe“) färben die Gruppe passend, Tiere &amp; Co. (z. B. „Füchse“) bekommen ein Symbol. Gilt für das Profil „${esc(activeProfile().name)}“.</div>
     <div class="gnames" id="gList"></div>
     <button class="btn ghost block" id="gAdd">${I.plus} Gruppe hinzufügen</button>
-    <div class="actions" style="margin-top:14px"><button class="btn ghost" id="gCancel">Abbrechen</button><button class="btn" id="gSave">Speichern</button></div>`);
-  const live=()=>rows.filter(r=>!r.del).map(r=>({id:r.id,name:r.name.trim()||"…"}));
-  const paint=()=>{
-    const looks=groupLooks(live());
-    $("#gList").innerHTML=rows.length?rows.map((r,i)=>{const l=looks.find(x=>x.g.id===r.id), n=r.isNew?0:kidsIn(r.id);
-      return `<div class="grow ${r.del?"del":""}" data-i="${i}" data-g="${esc(r.id)}">
-        <span class="gprev">${r.del?gBadge(NO_COLOR,18):gBadge({id:r.id,c:l.color,emoji:l.emoji},18)}</span>
-        <div class="gin"><input value="${esc(r.name)}" placeholder="Name der Gruppe" maxlength="30" autocomplete="off" autocapitalize="sentences" ${r.del?"disabled":""}>
-          <small>${r.del?(n?`wird gelöscht – ${n} ${n===1?"Kind wird":"Kinder werden"} „Ohne Gruppe“`:"wird gelöscht"):(r.isNew?"neu":(n?`${n} ${n===1?"Kind":"Kinder"}`:"keine Kinder"))}</small></div>
-        <button class="act" data-x="${i}" aria-label="${r.del?"Löschen rückgängig":"Gruppe löschen"}">${r.del?I.undo:I.trash}</button></div>`}).join("")
+    <div class="actions" style="margin-top:14px"><button class="btn block" id="gDone">Fertig</button></div>`);
+  const allRows=()=>[...groupList().map(g=>({...g,isNew:false})),...pending.map(r=>({...r,isNew:true}))];
+  const looksFor=rows=>groupLooks(rows.map(r=>({id:r.id,name:(r.name||"").trim()||"…"})));
+  const badge=(rows,id)=>{const l=looksFor(rows).find(x=>x.g.id===id);return gBadge({id,c:l.color,emoji:l.emoji},18)};
+  const sub=r=>r.isNew?"neu – Namen eingeben":(n=>n?`${n} ${n===1?"Kind":"Kinder"}`:"keine Kinder")(kidsIn(r.id));
+  const paint=focusId=>{
+    const rows=allRows();
+    $("#gList").innerHTML=rows.length?rows.map(r=>`<div class="grow" data-g="${esc(r.id)}">
+        <span class="gprev">${badge(rows,r.id)}</span>
+        <div class="gin"><input value="${esc(r.name)}" placeholder="Name der Gruppe" maxlength="30" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"><small>${sub(r)}</small></div>
+        <button class="act" data-x="${esc(r.id)}" aria-label="Gruppe löschen">${I.trash}</button></div>`).join("")
       :`<div class="hint" style="text-align:center;padding:10px 0">Noch keine Gruppen – füge eine hinzu.</div>`;
-    $("#gList").querySelectorAll(".grow input").forEach(inp=>{const r=rows[+inp.closest(".grow").dataset.i];
-      inp.oninput=()=>{r.name=inp.value;const lk=groupLooks(live()).find(x=>x.g.id===r.id);inp.closest(".grow").querySelector(".gprev").innerHTML=gBadge({id:r.id,c:lk.color,emoji:lk.emoji},18)}});
-    $("#gList").querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{const i=+b.dataset.x,r=rows[i];
-      if(r.isNew){rows.splice(i,1);haptic("tick")} else {r.del=!r.del;haptic(r.del?"medium":"tick")}
-      paint()});
-    $("#gAdd").disabled=rows.filter(r=>!r.del).length>=MAX_GROUPS;
+    $("#gList").querySelectorAll(".grow").forEach(row=>{
+      const id=row.dataset.g, inp=row.querySelector("input");
+      inp.oninput=()=>{const rs=allRows().map(r=>r.id===id?{...r,name:inp.value}:r);row.querySelector(".gprev").innerHTML=badge(rs,id)};
+      inp.onkeydown=e=>{if(e.key==="Enter")inp.blur()};
+      inp.onchange=inp.onblur=()=>commitName(id,inp);
+      row.querySelector("[data-x]").onclick=()=>removeRow(id,row);
+    });
+    $("#gAdd").disabled=groupList().length+pending.length>=MAX_GROUPS;
+    if(focusId){const f=$("#gList").querySelector(`.grow[data-g="${focusId}"] input`);if(f){f.focus();f.scrollIntoView({block:"center",behavior:"smooth"})}}
   };
+  // refresh badges and sub lines in place (keeps the cursor in whatever field the user tapped next)
+  const refresh=()=>{const rows=allRows();
+    $("#gList").querySelectorAll(".grow").forEach(row=>{const r=rows.find(x=>x.id===row.dataset.g);if(!r)return;
+      row.querySelector(".gprev").innerHTML=badge(rows,r.id);row.querySelector("small").textContent=sub(r)})};
+  function commitName(id,inp){
+    const name=inp.value.trim(), g=groupList().find(x=>x.id===id), pi=pending.findIndex(x=>x.id===id);
+    if(!g&&pi<0) return;
+    if(!name){ if(g){inp.value=g.name;showToast("Zum Entfernen den Papierkorb benutzen")} return }   // keep old name
+    if(dupe(name,id)){haptic("warn");showToast(`„${name}“ gibt es schon`);inp.value=g?g.name:"";return}
+    if(g){ if(g.name===name) return; g.name=name; }
+    else { pending.splice(pi,1); groupList().push({id,name}); haptic("success"); }
+    save(); render(); refresh();
+  }
+  function removeRow(id,row){
+    haptic("medium");
+    const pi=pending.findIndex(x=>x.id===id);
+    row.classList.add("gone");
+    setTimeout(()=>{
+      if(pi>=0){pending.splice(pi,1);paint();return}
+      const list=groupList(), idx=list.findIndex(x=>x.id===id); if(idx<0) return;
+      const g=list[idx], kids=DB.kids.filter(k=>k.color===id), snaps=[];
+      list.splice(idx,1);
+      kids.forEach(k=>k.color="");
+      for(const rec of Object.values(DB.records)) for(const e of Object.values(rec.entries)) if(e.snap&&e.snap.color===id&&!e.snap.gname){e.snap.gname=g.name;snaps.push(e.snap)}
+      if(S.filter==="g:"+id) S.filter="all";
+      save(); render(); paint();
+      const n=new Set(kids.map(pkey)).size;
+      showToast(`„${g.name}“ gelöscht${n?` – ${n} ${n===1?"Kind":"Kinder"} ohne Gruppe`:""}`,"Rückgängig",()=>{
+        groupList().splice(Math.min(idx,groupList().length),0,g);
+        kids.forEach(k=>{if(!k.color)k.color=id}); snaps.forEach(sn=>delete sn.gname);
+        save(); haptic("success"); render(); if(sheetOpen&&$("#gList")) paint();
+      });
+    },180);
+  }
   paint();
-  $("#gAdd").onclick=()=>{haptic("light");rows.push({id:"g"+uid(),name:"",isNew:true,del:false});paint();
-    const ins=$("#gList").querySelectorAll("input");const last=ins[ins.length-1];last.focus();last.scrollIntoView({block:"center",behavior:"smooth"})};
-  $("#gCancel").onclick=()=>{haptic("tick");closeSheet()};
-  $("#gSave").onclick=()=>{
-    if(rows.some(r=>!r.del&&!r.isNew&&!r.name.trim())){haptic("warn");showToast("Bitte jeder Gruppe einen Namen geben – oder sie löschen");return}
-    const keep=rows.filter(r=>!r.del&&r.name.trim()), gone=rows.filter(r=>r.del);
-    const names=keep.map(r=>r.name.trim().toLocaleLowerCase("de"));
-    if(new Set(names).size!==names.length){haptic("warn");showToast("Zwei Gruppen haben denselben Namen");return}
-    const affected=gone.reduce((a,r)=>a+kidsIn(r.id),0);
-    const apply=()=>{
-      for(const r of gone){
-        DB.kids.forEach(k=>{if(k.color===r.id)k.color=""});
-        // past entries keep the group name for exports
-        for(const rec of Object.values(DB.records)) for(const e of Object.values(rec.entries)) if(e.snap&&e.snap.color===r.id) e.snap.gname=r.orig;
-        if(S.filter==="g:"+r.id) S.filter="all";
-      }
-      DB.settings.groups=keep.map(r=>({id:r.id,name:r.name.trim()}));
-      save(); haptic("success"); closeSheet(); render();
-      const added=keep.filter(r=>r.isNew).length;
-      showToast([added?`${added} hinzugefügt`:"",gone.length?`${gone.length} gelöscht`:""].filter(Boolean).join(", ")||"Gruppen gespeichert");
-    };
-    if(affected){haptic("warn");confirmSheet(`${gone.length===1?"Gruppe":gone.length+" Gruppen"} löschen?`,`${affected} ${affected===1?"Kind ist":"Kinder sind"} darin eingetragen und ${affected===1?"steht":"stehen"} danach „Ohne Gruppe“. Bereits erfasste Anwesenheiten behalten den Gruppennamen.`,"Löschen",apply)}
-    else apply();
-  };
+  $("#gAdd").onclick=()=>{haptic("light");const id="g"+uid();pending.push({id,name:""});paint(id)};
+  $("#gDone").onclick=()=>{haptic("tick");if(document.activeElement)document.activeElement.blur();closeSheet()};
 }
 function openMasterMenu(){
   const wd=S.mWeekday, all=wd==="all";
