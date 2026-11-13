@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Group Checkan</title>
 <style>
@@ -489,8 +490,73 @@ let DB={version:1,kids:[],records:{},settings:{}};
 /* All profiles live in ROOT; DB is always the data of the active profile. */
 let ROOT={format:2,active:null,profiles:[]};
 const emptyDB=()=>({version:1,kids:[],records:{},settings:{}});
+/* ---------- Input validation ----------
+   Everything that comes from storage or from an imported file is rebuilt field by field with strict types,
+   lengths and formats. Unknown fields are dropped. This keeps crafted files from injecting markup/code
+   or from breaking the app. */
+const isObj=v=>v!==null&&typeof v==="object"&&!Array.isArray(v);
+const vStr=(v,max)=>typeof v==="string"?v.slice(0,max):(typeof v==="number"&&isFinite(v)?String(v).slice(0,max):"");
+const vId=v=>{v=vStr(v,64);return /^[A-Za-z0-9_-]+$/.test(v)?v:""};
+const vInt=(v,min,max,def)=>Number.isInteger(v)&&v>=min&&v<=max?v:def;
+const vTime=v=>typeof v==="string"&&/^\d{2}:\d{2}$/.test(v)?v:undefined;
+const STATUSES=["present","pickedup","sick"];
+function sanitizeDB(d){
+  d=isObj(d)?d:{};
+  const out={version:1,kids:[],records:{},settings:{}};
+  const seen=new Set();
+  for(const k of Array.isArray(d.kids)?d.kids.slice(0,5000):[]){
+    if(!isObj(k)) continue;
+    const kid={id:vId(k.id)||uid(),first:vStr(k.first,80).trim(),last:vStr(k.last,80).trim(),color:vId(k.color),cls:vStr(k.cls,20).trim(),day:vInt(k.day,1,5,0)};
+    if(!kid.day||(!kid.first&&!kid.last)) continue;
+    if(seen.has(kid.id)) kid.id=uid(); seen.add(kid.id);
+    out.kids.push(kid);
+  }
+  if(isObj(d.records)) for(const [key,r] of Object.entries(d.records)){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(key)||!isObj(r)||!isObj(r.entries)) continue;
+    const entries={};
+    for(const [id,e] of Object.entries(r.entries)){
+      if(!vId(id)||!isObj(e)||!STATUSES.includes(e.status)) continue;
+      const sn=isObj(e.snap)?e.snap:{};
+      const snap={first:vStr(sn.first,80),last:vStr(sn.last,80),color:vId(sn.color),cls:vStr(sn.cls,20)};
+      if(sn.gname) snap.gname=vStr(sn.gname,30);
+      const ne={status:e.status,snap}; const t=vTime(e.time),a=vTime(e.arrived); if(t)ne.time=t; if(a)ne.arrived=a;
+      entries[id]=ne;
+    }
+    if(Object.keys(entries).length) out.records[key]={weekday:fromIso(key).getDay(),entries};
+  }
+  const st=isObj(d.settings)?d.settings:{};
+  if(Array.isArray(st.groups)){
+    const ids=new Set(); out.settings.groups=[];
+    for(const g of st.groups.slice(0,MAX_GROUPS)){ if(!isObj(g))continue; const id=vId(g.id), name=vStr(g.name,30).trim();
+      if(id&&name&&!ids.has(id)){ids.add(id);out.settings.groups.push({id,name})} }
+  } else if(isObj(st.groupNames)){
+    out.settings.groupNames={}; for(const [k,v] of Object.entries(st.groupNames)) if(vId(k)) out.settings.groupNames[k]=vStr(v,30);
+  }
+  for(const k of ["sort_today","sort_master"]) if(st[k]==="first"||st[k]==="last") out.settings[k]=st[k];
+  if(Number.isInteger(st.retentionMonths)) out.settings.retentionMonths=st.retentionMonths;  // migrated later
+  return out;
+}
+const RET_ALLOWED=[0,1,3,6,12,24];
+function sanitizeRoot(o){
+  const out={format:2,active:null,profiles:[],settings:{}};
+  const ids=new Set();
+  for(const p of Array.isArray(o.profiles)?o.profiles.slice(0,50):[]){
+    if(!isObj(p)) continue;
+    let id=vId(p.id)||uid(); if(ids.has(id)) id=uid(); ids.add(id);
+    out.profiles.push({id,name:vStr(p.name,40).trim()||"Profil",color:vInt(p.color,0,PCOLORS.length-1,0),db:p.db});
+  }
+  out.active=vId(o.active);
+  const st=isObj(o.settings)?o.settings:{};
+  if(Number.isInteger(st.termsAccepted)) out.settings.termsAccepted=st.termsAccepted;
+  if(typeof st.termsAcceptedAt==="string") out.settings.termsAcceptedAt=st.termsAcceptedAt.slice(0,40);
+  if(typeof st.autoUpdate==="boolean") out.settings.autoUpdate=st.autoUpdate;
+  if(typeof st.lastUpdateCheck==="number"&&isFinite(st.lastUpdateCheck)) out.settings.lastUpdateCheck=st.lastUpdateCheck;
+  if(isObj(st.retention)&&RET_ALLOWED.includes(st.retention.months))
+    out.settings.retention={months:st.retention.months,profiles:st.retention.profiles==="all"?"all":(Array.isArray(st.retention.profiles)?st.retention.profiles.map(vId).filter(Boolean):"all")};
+  return out;
+}
 function normalizeDB(d){
-  d=Object.assign(emptyDB(),d||{}); if(!d.settings) d.settings={};
+  d=sanitizeDB(d);
   if(!d.settings.groups){d.settings.groups=defaultGroups(d.settings.groupNames);}
   delete d.settings.groupNames;
   const mig=o=>{if(o&&LEGACY_COLORS[o.color]) o.color=LEGACY_COLORS[o.color]};
@@ -502,8 +568,8 @@ function load(){
   let raw=null, parsed=null;
   try{ raw = N&&N.loadData ? N.loadData() : localStorage.getItem("anw-db"); }catch(e){}
   if(raw){ try{ parsed=JSON.parse(raw); }catch(e){} }
-  if(parsed&&Array.isArray(parsed.profiles)&&parsed.profiles.length) ROOT=parsed;
-  else ROOT={format:2,active:null,profiles:[{id:uid(),name:"Profil 1",color:0,db:parsed&&parsed.kids?parsed:emptyDB()}]};
+  if(isObj(parsed)&&Array.isArray(parsed.profiles)&&parsed.profiles.length) ROOT=sanitizeRoot(parsed);
+  if(!ROOT.profiles||!ROOT.profiles.length) ROOT={format:2,active:null,settings:{},profiles:[{id:uid(),name:"Profil 1",color:0,db:isObj(parsed)&&parsed.kids?parsed:emptyDB()}]};
   if(!ROOT.profiles.some(p=>p.id===ROOT.active)) ROOT.active=ROOT.profiles[0].id;
   if(!ROOT.settings) ROOT.settings={};
   migrateRetention();
@@ -638,7 +704,7 @@ function renderSettings(){
   $("#sImprint").onclick=()=>{haptic("light");openImprint()};
 }
 /** Checkbox list of profiles (used by retention and backup). */
-const profileChecks=(id,checked)=>`<div class="pchecks" id="${id}">${ROOT.profiles.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}" ${checked(p)?"checked":""}><span class="ppill static" style="--pc:${PCOLORS[(p.color||0)%PCOLORS.length]}"><span>${esc(initials(p.name))}</span></span><span class="pn">${esc(p.name)}</span><i class="cb"></i></label>`).join("")}</div>`;
+const profileChecks=(id,checked)=>`<div class="pchecks" id="${id}">${ROOT.profiles.map(p=>`<label class="pchk"><input type="checkbox" value="${esc(p.id)}" ${checked(p)?"checked":""}><span class="ppill static" style="--pc:${PCOLORS[(p.color||0)%PCOLORS.length]}"><span>${esc(initials(p.name))}</span></span><span class="pn">${esc(p.name)}</span><i class="cb"></i></label>`).join("")}</div>`;
 const checkedIds=id=>[...document.querySelectorAll(`#${id} input:checked`)].map(i=>i.value);
 function updateCardHtml(){
   const auto=!!ROOT.settings.autoUpdate, i=UPD.info, last=ROOT.settings.lastUpdateCheck;
@@ -687,7 +753,14 @@ window.onUpdateInfo=function(info,silent){
 };
 window.onUpdateError=function(msg,silent){
   if(silent) return;
-  UPD.state=UPD.info&&UPD.state==="downloading"?"available":"error";
+  const security=/^Update /.test(msg);          // rejected by the signature/package/version check
+  if(security){
+    UPD.state="error"; UPD.err=msg+" – aus Sicherheitsgründen abgebrochen.";
+    haptic("warn"); refreshUpdateCard();
+    confirmSheet("Update abgebrochen",`${msg}. Die Datei wurde nicht installiert und gelöscht. Bitte lade Updates nur über die offizielle GitHub-Seite herunter und melde dich beim Entwickler, falls das wieder passiert.`,"OK",()=>closeSheet());
+    return;
+  }
+  UPD.state=UPD.info&&["downloading","ready"].includes(UPD.state)?"available":"error";
   UPD.err=/fehlgeschlagen/.test(msg)?msg:"Keine Verbindung zu GitHub. Bitte Internet prüfen.";
   if(UPD.state==="available") showToast(msg);
   haptic("warn"); refreshUpdateCard();
@@ -836,11 +909,11 @@ function stepProfile(delta){
   el.addEventListener("click",()=>{haptic("light");openProfiles()}); // mouse / accessibility
 })();
 function openProfiles(){
-  const list=ROOT.profiles.map(p=>`<div class="prow ${p.id===ROOT.active?"active":""}" data-id="${p.id}">
+  const list=ROOT.profiles.map(p=>`<div class="prow ${p.id===ROOT.active?"active":""}" data-id="${esc(p.id)}">
       <span class="ppill static" style="--pc:${PCOLORS[(p.color||0)%PCOLORS.length]}"><span>${esc(initials(p.name))}</span></span>
       <div class="info"><div class="name">${esc(p.name)}</div><div class="meta">${(n=>n+(n===1?" Kind":" Kinder"))(p.db&&p.db.kids?new Set(p.db.kids.map(pkey)).size:0)}${p.id===ROOT.active?" · aktiv":""}</div></div>
       ${p.id===ROOT.active?`<span class="pcheck">${I.check}</span>`:""}
-      <button class="act" data-edit="${p.id}" aria-label="Profil bearbeiten">${I.edit}</button></div>`).join("");
+      <button class="act" data-edit="${esc(p.id)}" aria-label="Profil bearbeiten">${I.edit}</button></div>`).join("");
   openSheet(`<h2>Profile</h2><div class="plist">${list}</div>
     <button class="btn block ghost" id="pNew" style="margin-top:10px">${I.plus} Neues Profil</button>
     <div class="hint" style="text-align:center;margin-top:10px">Tipp: Auf der Profil-Pille nach unten wischen = nächstes Profil, nach oben = zurück.</div>`);
@@ -947,11 +1020,11 @@ function renderToday(){
 function kidRow(k,key){
   const st=statusOf(key,k.id), e=entryOf(key,k.id), co=colorOf(k.color);
   let tag="";
-  if(st==="present") tag=`<span class="tag ok">${e&&e.arrived?"da seit "+e.arrived:"anwesend"}</span>`;
-  if(st==="pickedup") tag=`<span class="tag pick">abgeholt ${e?e.time:""}</span>`;
+  if(st==="present") tag=`<span class="tag ok">${e&&e.arrived?"da seit "+esc(e.arrived):"anwesend"}</span>`;
+  if(st==="pickedup") tag=`<span class="tag pick">abgeholt ${e?esc(e.time):""}</span>`;
   if(st==="sick") tag=`<span class="tag sick">krank</span>`;
   const checkIcon=st==="sick"?I.cross.replace('stroke-width="2.6"','stroke-width="3"').replace('M12 5v14M5 12h14','M12 6v12M6 12h12'):st==="pickedup"?I.home:I.check;
-  return `<div class="kid ${st}" data-id="${k.id}">
+  return `<div class="kid ${st}" data-id="${esc(k.id)}">
     <span class="bar" style="background:${co.c}"></span>
     <span class="check">${checkIcon}</span>
     <div class="info"><div class="nline"><span class="name"><span class="fn">${esc(k.first||k.last)}</span></span>${co.id?`<span class="cg">${gBadge(co,8)}${esc(co.name)}</span>`:(k.gname?`<span class="cg">${esc(k.gname)}</span>`:"")}</div>
@@ -1096,7 +1169,7 @@ function renderMaster(){
     const kids=rosterFor(wd);
     h+=`<div class="section-h">${WD_LONG[wd]} · ${kids.length} ${kids.length===1?"Kind":"Kinder"}</div>`;
     if(!kids.length) h+=`<div class="empty">${I.users}<b>Noch keine Kinder</b>Tippe auf <b style="display:inline;font-size:inherit">+</b>, um ein Kind für ${WD_LONG[wd]} anzulegen.</div>`;
-    else h+='<div class="list">'+kids.map(k=>masterRow(k,colorOf(k.color).name+(k.cls?" · Klasse "+esc(k.cls):""),"day")).join("")+'</div><div class="hint" style="text-align:center;margin-top:12px">Zum Entfernen von diesem Tag ein Kind zur Seite wischen</div>';
+    else h+='<div class="list">'+kids.map(k=>masterRow(k,esc(colorOf(k.color).name)+(k.cls?" · Klasse "+esc(k.cls):""),"day")).join("")+'</div><div class="hint" style="text-align:center;margin-top:12px">Zum Entfernen von diesem Tag ein Kind zur Seite wischen</div>';
   }
   h+='<div style="height:80px"></div>';
   $("#main").innerHTML=h+`<button class="fab" id="fab" aria-label="Kind hinzufügen">${I.plus}</button>`;
@@ -1113,7 +1186,7 @@ function renderMaster(){
 }
 function masterRow(k,meta,scope){
   const co=colorOf(k.color);
-  return `<div class="swipe" data-id="${k.id}" data-scope="${scope}"><div class="swipe-bg"><span>${I.trash}${scope==="all"?"Löschen":"Entfernen"}</span><span>${scope==="all"?"Löschen":"Entfernen"}${I.trash}</span></div><div class="mrow">${gBadge(co,16)}<span style="display:none"></span><div class="info"><div class="name">${esc(displayName(k,sortMode("master")))}</div><div class="meta">${meta}</div></div><button class="act" aria-label="Bearbeiten">${I.edit}</button></div></div>`;
+  return `<div class="swipe" data-id="${esc(k.id)}" data-scope="${scope}"><div class="swipe-bg"><span>${I.trash}${scope==="all"?"Löschen":"Entfernen"}</span><span>${scope==="all"?"Löschen":"Entfernen"}${I.trash}</span></div><div class="mrow">${gBadge(co,16)}<span style="display:none"></span><div class="info"><div class="name">${esc(displayName(k,sortMode("master")))}</div><div class="meta">${meta}</div></div><button class="act" aria-label="Bearbeiten">${I.edit}</button></div></div>`;
 }
 function renderPersonList(){
   const q=(S.mSearch||"").trim().toLocaleLowerCase("de"), all=persons();
@@ -1122,7 +1195,7 @@ function renderPersonList(){
   let h=`<div class="section-h">${q?`${list.length} von ${all.length} ${all.length===1?"Kind":"Kindern"}`:`Alle Kinder · ${all.length}`}</div>`;
   if(!all.length) h+=`<div class="empty">${I.users}<b>Noch keine Kinder</b>Tippe auf <b style="display:inline;font-size:inherit">+</b>, um ein Kind anzulegen.</div>`;
   else if(!list.length) h+=`<div class="empty">${I.search}<b>Kein Treffer</b>Für „${esc(S.mSearch)}“ wurde kein Kind gefunden.</div>`;
-  else h+='<div class="list">'+list.map(p=>masterRow(p,`${colorOf(p.color).name}${p.cls?" · Klasse "+esc(p.cls):""}<span class="daychips">${[1,2,3,4,5].map(w=>`<i class="${p.days.includes(w)?"on":""}">${WD_SHORT[w]}</i>`).join("")}</span>`,"all")).join("")+'</div><div class="hint" style="text-align:center;margin-top:12px">Zum Löschen (an allen Tagen) ein Kind zur Seite wischen</div>';
+  else h+='<div class="list">'+list.map(p=>masterRow(p,`${esc(colorOf(p.color).name)}${p.cls?" · Klasse "+esc(p.cls):""}<span class="daychips">${[1,2,3,4,5].map(w=>`<i class="${p.days.includes(w)?"on":""}">${WD_SHORT[w]}</i>`).join("")}</span>`,"all")).join("")+'</div><div class="hint" style="text-align:center;margin-top:12px">Zum Löschen (an allen Tagen) ein Kind zur Seite wischen</div>';
   $("#mList").innerHTML=h;
   $("#mList").querySelectorAll(".swipe").forEach(bindSwipe);
 }
@@ -1378,6 +1451,9 @@ async function encryptBackup(json,pw){
   return JSON.stringify({app:"group-checkan",type:"backup-encrypted",v:1,kdf:{name:"PBKDF2",hash:"SHA-256",iter:PBKDF2_ITER,salt:b64(salt)},cipher:"AES-GCM",iv:b64(iv),data:b64(ct)});
 }
 async function decryptBackup(o,pw){
+  // a crafted file must not dictate weak or absurd parameters
+  if(!isObj(o.kdf)||o.kdf.name!=="PBKDF2"||o.kdf.hash!=="SHA-256"||!Number.isInteger(o.kdf.iter)||o.kdf.iter<100000||o.kdf.iter>5000000
+     ||typeof o.kdf.salt!=="string"||typeof o.iv!=="string"||typeof o.data!=="string"||o.data.length>40*1024*1024) throw new Error("bad format");
   const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(o.iv)},await pwKey(pw,unb64(o.kdf.salt),o.kdf.iter),unb64(o.data));
   return new TextDecoder().decode(pt);
 }
@@ -1389,7 +1465,7 @@ function openBackup(){
     <div class="field"><label>Profile</label>${profileChecks("bP",()=>true)}</div>
     <label class="switchrow"><span>Mit Passwort verschlüsseln<small>Die Datei ist ohne Passwort nicht lesbar</small></span><input type="checkbox" id="bEnc"><i class="switch"></i></label>
     <div id="bPw" style="display:none">
-      <div class="field"><label>Passwort</label><input type="password" id="bPw1" autocomplete="new-password" placeholder="mindestens 6 Zeichen"></div>
+      <div class="field"><label>Passwort</label><input type="password" id="bPw1" autocomplete="new-password" placeholder="mindestens 8 Zeichen"></div>
       <div class="field"><label>Passwort wiederholen</label><input type="password" id="bPw2" autocomplete="new-password"></div>
       <div class="hint" style="margin:-6px 0 14px">Wichtig: Ohne dieses Passwort lässt sich die Sicherung nicht wiederherstellen – es kann nicht zurückgesetzt werden.</div>
     </div>
@@ -1409,7 +1485,7 @@ function openBackup(){
     let text=JSON.stringify(payload,null,1), name=base+".json";
     if(enc){
       const p1=$("#bPw1").value, p2=$("#bPw2").value;
-      if(p1.length<6){haptic("warn");showToast("Passwort: mindestens 6 Zeichen");$("#bPw1").focus();return}
+      if(p1.length<8){haptic("warn");showToast("Passwort: mindestens 8 Zeichen");$("#bPw1").focus();return}
       if(p1!==p2){haptic("warn");showToast("Die Passwörter stimmen nicht überein");$("#bPw2").focus();return}
       if(!cryptoOk()){haptic("warn");showToast("Verschlüsselung wird auf diesem Gerät nicht unterstützt");return}
       $("#bSave").disabled=true; $("#bSave").textContent="Verschlüssele …";
@@ -1441,11 +1517,15 @@ window.onFileOpened=function(text){
 function restoreFromText(text){
   let d; try{ d=JSON.parse(text) }catch(e){ d=null }
   // format from version 2.5: several profiles
-  if(d&&d.type==="backup"&&Array.isArray(d.profiles)&&d.profiles.length){ restoreProfiles(d.profiles); return }
+  if(isObj(d)&&d.type==="backup"&&Array.isArray(d.profiles)&&d.profiles.length){
+    const list=sanitizeRoot({profiles:d.profiles}).profiles.map(p=>({...p,db:normalizeDB(p.db)}));
+    if(!list.length){haptic("warn");showToast("Datei ist keine gültige Sicherung");return}
+    restoreProfiles(list); return }
   // older format: data of a single profile → into the active profile
-  if(!d||!Array.isArray(d.kids)||typeof d.records!=="object"){haptic("warn");showToast("Datei ist keine gültige Sicherung");return}
+  if(!isObj(d)||!Array.isArray(d.kids)||!isObj(d.records)){haptic("warn");showToast("Datei ist keine gültige Sicherung");return}
+  d=normalizeDB(d);
   confirmSheet("Sicherung wiederherstellen?",`Die Daten des Profils „${activeProfile().name}“ werden durch die Sicherung ersetzt (${new Set(d.kids.map(pkey)).size} Kinder, ${Object.keys(d.records).length} erfasste Tage).`,"Wiederherstellen",()=>{
-    DB=normalizeDB(d);dedupeKids();saveNow();haptic("success");closeSheet();render();showToast("Sicherung wiederhergestellt")});
+    DB=d;dedupeKids();saveNow();haptic("success");closeSheet();render();showToast("Sicherung wiederhergestellt")});
 }
 function restoreProfiles(list){
   const exists=bp=>ROOT.profiles.find(p=>p.id===bp.id);
@@ -1462,7 +1542,7 @@ function restoreProfiles(list){
     const doIt=()=>{
       saveNow();
       for(const bp of chosen){
-        const db=normalizeDB(bp.db); dedupeKids(db);
+        const db=bp.db; dedupeKids(db);   // already validated in restoreFromText
         const cur=exists(bp);
         if(cur){cur.name=bp.name||cur.name;cur.color=bp.color??cur.color;cur.db=db}
         else ROOT.profiles.push({id:bp.id||uid(),name:bp.name||"Profil",color:bp.color||0,db});

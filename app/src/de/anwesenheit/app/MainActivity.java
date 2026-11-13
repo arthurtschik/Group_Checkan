@@ -22,6 +22,10 @@ import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.provider.Settings;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+import java.security.MessageDigest;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -67,11 +71,20 @@ public class MainActivity extends Activity {
         web.setHapticFeedbackEnabled(true);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setAllowFileAccess(true);
-        s.setTextZoom(100);
-        web.setWebChromeClient(new WebChromeClient());
+        // least privilege: the page only needs its own bundled asset (file:///android_asset works without file access)
+        s.setDomStorageEnabled(false);
+        s.setAllowFileAccess(false);
         s.setAllowContentAccess(false);
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
+        s.setGeolocationEnabled(false);
+        s.setDatabaseEnabled(false);
+        s.setSupportMultipleWindows(false);
+        s.setJavaScriptCanOpenWindowsAutomatically(false);
+        s.setTextZoom(100);
+        WebView.setWebContentsDebuggingEnabled(false);
+        web.setFilterTouchesWhenObscured(true);   // ignore taps while another app draws over us (tapjacking)
+        web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
@@ -103,8 +116,8 @@ public class MainActivity extends Activity {
         // an update that has been installed leaves its APK behind: clean it up
         try {
             File apk = ApkProvider.apkFile(this);
-            if (apk.exists() && getPackageManager().getPackageArchiveInfo(apk.getPath(), 0) != null
-                    && getPackageManager().getPackageArchiveInfo(apk.getPath(), 0).versionName.equals(appVersion())) apk.delete();
+            new File(apk.getParentFile(), "download.apk").delete();
+            if (apk.exists() && verifyApk(apk) != null) apk.delete();   // installed already, or not valid
         } catch (Exception ignored) {
         }
     }
@@ -201,8 +214,13 @@ public class MainActivity extends Activity {
         } else if (requestCode == REQ_OPEN) {
             try {
                 InputStream is = getContentResolver().openInputStream(uri);
-                String text = new String(readAll(is), UTF8);
+                byte[] bytes = readAll(is, MAX_IMPORT_BYTES);
                 is.close();
+                if (bytes == null) {
+                    notifyJs("Datei ist zu groß für eine Sicherung", false);
+                    return;
+                }
+                String text = new String(bytes, UTF8);
                 js("window.onFileOpened&&window.onFileOpened(" + jsStr(text) + ")");
             } catch (Exception e) {
                 notifyJs("Datei konnte nicht gelesen werden", false);
@@ -210,11 +228,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static final int MAX_IMPORT_BYTES = 30 * 1024 * 1024;
+    private static final long MAX_APK_BYTES = 50L * 1024 * 1024;
+
     private static byte[] readAll(InputStream is) throws java.io.IOException {
+        return readAll(is, Integer.MAX_VALUE);
+    }
+
+    /** Reads the stream completely; returns null if it is larger than max bytes. */
+    private static byte[] readAll(InputStream is, int max) throws java.io.IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];
         int n;
-        while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
+        while ((n = is.read(buf)) > 0) {
+            if (bos.size() + n > max) return null;
+            bos.write(buf, 0, n);
+        }
         return bos.toByteArray();
     }
 
@@ -305,6 +334,53 @@ public class MainActivity extends Activity {
     }
     private volatile boolean downloading = false;
 
+    /** SHA-256 of the release signing certificate. An update is only offered for installation if it is
+     *  signed with exactly this certificate, has this app's package name and a higher version code. */
+    private static final String CERT_SHA256 = "4CC4B3A74564A3E258F853824E19205F1ECF7CFAF2FDAB9D236CB0FB8D958E04";
+
+    private static String sha256Hex(byte[] b) throws Exception {
+        byte[] d = MessageDigest.getInstance("SHA-256").digest(b);
+        StringBuilder sb = new StringBuilder();
+        for (byte x : d) sb.append(String.format("%02X", x));
+        return sb.toString();
+    }
+
+    @SuppressWarnings("deprecation")
+    private long installedVersionCode() throws Exception {
+        PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+        return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+    }
+
+    /** Returns null if the APK is a genuine, newer version of this app, otherwise a user-facing reason. */
+    @SuppressWarnings("deprecation")
+    private String verifyApk(File apk) {
+        try {
+            if (!apk.exists() || apk.length() == 0 || apk.length() > MAX_APK_BYTES) return "Update-Datei ist ungültig";
+            PackageManager pm = getPackageManager();
+            int flags = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+            PackageInfo pi = pm.getPackageArchiveInfo(apk.getPath(), flags);
+            if (pi == null) return "Update-Datei ist beschädigt";
+            if (!getPackageName().equals(pi.packageName)) return "Update gehört nicht zu dieser App";
+            long code = Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+            if (code <= installedVersionCode()) return "Update ist nicht neuer als die installierte Version";
+            Signature[] sigs = null;
+            if (Build.VERSION.SDK_INT >= 28 && pi.signingInfo != null) {
+                if (pi.signingInfo.hasMultipleSigners()) return "Update-Signatur ist ungültig";
+                sigs = pi.signingInfo.getApkContentsSigners();
+            }
+            if (sigs == null) {
+                // some Android 9 builds leave signingInfo empty for archives: fall back to the older API
+                PackageInfo legacy = Build.VERSION.SDK_INT >= 28 ? pm.getPackageArchiveInfo(apk.getPath(), PackageManager.GET_SIGNATURES) : pi;
+                sigs = legacy == null ? null : legacy.signatures;
+            }
+            if (sigs == null || sigs.length != 1) return "Update-Signatur ist ungültig";
+            if (!CERT_SHA256.equals(sha256Hex(sigs[0].toByteArray()))) return "Update ist nicht vom Entwickler signiert";
+            return null;
+        } catch (Exception e) {
+            return "Update konnte nicht geprüft werden";
+        }
+    }
+
     private String appVersion() {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
@@ -365,11 +441,14 @@ public class MainActivity extends Activity {
         downloading = true;
         new Thread(new Runnable() {
             public void run() {
-                File out = ApkProvider.apkFile(MainActivity.this);
+                File target = ApkProvider.apkFile(MainActivity.this);
+                File out = new File(target.getParentFile(), "download.apk");
+                target.delete();
                 try {
                     HttpURLConnection c = open(url);
                     if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
                     long total = c.getContentLength();
+                    if (total > MAX_APK_BYTES) throw new Exception("too large");
                     InputStream in = c.getInputStream();
                     FileOutputStream fo = new FileOutputStream(out);
                     byte[] buf = new byte[16384];
@@ -378,6 +457,7 @@ public class MainActivity extends Activity {
                     while ((n = in.read(buf)) > 0) {
                         fo.write(buf, 0, n);
                         done += n;
+                        if (done > MAX_APK_BYTES) throw new Exception("too large");
                         int pct = total > 0 ? (int) (done * 100 / total) : -1;
                         if (pct != lastPct) {
                             lastPct = pct;
@@ -386,6 +466,14 @@ public class MainActivity extends Activity {
                     }
                     fo.close();
                     in.close();
+                    if (total > 0 && done != total) throw new Exception("incomplete");
+                    String bad = verifyApk(out);
+                    if (bad != null) {
+                        out.delete();
+                        js("window.onUpdateError&&window.onUpdateError(" + jsStr(bad) + ",false)");
+                        return;
+                    }
+                    if (!out.renameTo(target)) throw new Exception("rename");
                     js("window.onUpdateDownloaded&&window.onUpdateDownloaded()");
                     runOnUiThread(new Runnable() {
                         public void run() {
@@ -394,6 +482,7 @@ public class MainActivity extends Activity {
                     });
                 } catch (Exception e) {
                     out.delete();
+                    target.delete();
                     js("window.onUpdateError&&window.onUpdateError(" + jsStr("Download fehlgeschlagen") + ",false)");
                 } finally {
                     downloading = false;
@@ -403,7 +492,14 @@ public class MainActivity extends Activity {
     }
 
     private void installUpdate() {
-        if (!ApkProvider.apkFile(this).exists()) return;
+        File apk = ApkProvider.apkFile(this);
+        if (!apk.exists()) return;
+        String bad = verifyApk(apk);   // check again right before handing it to the installer
+        if (bad != null) {
+            apk.delete();
+            js("window.onUpdateError&&window.onUpdateError(" + jsStr(bad) + ",false)");
+            return;
+        }
         if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
             js("window.onUpdateNeedsPermission&&window.onUpdateNeedsPermission()");
             try {

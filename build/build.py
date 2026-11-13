@@ -3,7 +3,7 @@
 
 Needs: JDK, android.jar (compile classpath), dalvik-dx jar, apksig jar (paths via env or args).
 """
-import os, shutil, struct, subprocess, sys, zipfile
+import hashlib, os, shutil, struct, subprocess, sys, zipfile
 sys.path.insert(0, os.path.dirname(__file__))
 from axml import Node, a, encode_xml, encode_arsc, config, T_STRING, T_DEC, T_HEX, T_BOOL, T_REF
 
@@ -13,10 +13,19 @@ ANDROID_JAR = os.path.join(TOOLS, "android.jar")
 DX_JAR = os.path.join(TOOLS, "dalvik-dx-16.0.1.jar")
 APKSIG_JAR = os.path.join(TOOLS, "apksig-2.3.0.jar")
 OUT = os.path.join(ROOT, "out")
+
+# Build tools are pinned: a tampered tool must not end up in a signed release.
+TOOL_SHA256 = {
+    ANDROID_JAR: "6cea1df3efb77103ac3e2beb9bf4718964b0e0869ab16d39d29d5cbae1c147ad",   # API 34 stubs (compile only)
+    DX_JAR: "1e4b645628e3bdb097b5331d669e177ef235a551582a8c646dbe36865e541907",        # Maven Central
+    APKSIG_JAR: "9637078c0016244e4be0941836295365a7e2e5b164c59cb7885783c40460bfee",    # Maven Central
+}
+# SHA-256 of the release signing certificate (also pinned in MainActivity for in-app updates).
+RELEASE_CERT_SHA256 = "4CC4B3A74564A3E258F853824E19205F1ECF7CFAF2FDAB9D236CB0FB8D958E04"
 GEN = os.path.join(OUT, "gen")
 
 PKG = "de.anwesenheit.app"
-VERSION_CODE, VERSION_NAME = 17, "2.6"
+VERSION_CODE, VERSION_NAME = 18, "2.7"
 MIN_SDK, TARGET_SDK = 24, 34
 
 # android attribute ids (from android.R.attr)
@@ -97,7 +106,22 @@ def adaptive_icon():
     ])
 
 
+def check_tools():
+    for path, want in TOOL_SHA256.items():
+        got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+        if got != want:
+            sys.exit(f"Checksum mismatch for {path}: {got} – refusing to build")
+
+
 def main():
+    check_tools()
+    ks = os.environ.get("KEYSTORE", os.path.join(ROOT, "build", "release.p12"))
+    kpass = os.environ.get("KEYSTORE_PASS")
+    if not kpass:
+        sys.exit("KEYSTORE_PASS is not set")
+    if not os.path.exists(ks):
+        # Never create a new key silently: an APK with a different key cannot update installed apps.
+        sys.exit(f"Signing key {ks} not found. Restore the release key (see README) – a new key would break all updates.")
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(GEN)
     classes = os.path.join(OUT, "classes")
@@ -105,7 +129,7 @@ def main():
 
     # 1) Java -> class files -> dex
     srcs = [os.path.join(dp, f) for dp, _, fs in os.walk(os.path.join(ROOT, "app", "src")) for f in fs if f.endswith(".java")]
-    run(["javac", "-nowarn", "-Xlint:-options", "-source", "8", "-target", "8", "-encoding", "UTF-8",
+    run(["javac", "-proc:none", "-nowarn", "-Xlint:-options", "-source", "8", "-target", "8", "-encoding", "UTF-8",
          "-bootclasspath", ANDROID_JAR, "-d", classes] + srcs)
     run(["java", "-cp", DX_JAR, "com.android.dx.command.Main", "--dex", f"--min-sdk-version={MIN_SDK}",
          "--output=" + os.path.join(GEN, "classes.dex"), classes])
@@ -158,19 +182,14 @@ def main():
                 zi.extra = b"\0" * ((4 - off % 4) % 4)
             z.writestr(zi, data)
 
-    # 5) sign (v1 + v2)
-    ks = os.environ.get("KEYSTORE", os.path.join(ROOT, "build", "release.p12"))
-    kpass = os.environ.get("KEYSTORE_PASS", "anwesenheit")
-    if not os.path.exists(ks):
-        run(["keytool", "-genkeypair", "-keystore", ks, "-storetype", "PKCS12", "-storepass", kpass,
-             "-keypass", kpass, "-alias", "anwesenheit", "-keyalg", "RSA", "-keysize", "2048",
-             "-validity", "10000", "-dname", "CN=Anwesenheit, O=Anwesenheit App, C=DE"])
+    # 5) sign (APK Signature Scheme v2), then verify against the pinned release certificate
     signer_dir = os.path.join(OUT, "signer")
     os.makedirs(signer_dir)
-    run(["javac", "-nowarn", "-cp", APKSIG_JAR, "-d", signer_dir, os.path.join(ROOT, "build", "Sign.java")])
+    run(["javac", "-proc:none", "-nowarn", "-cp", APKSIG_JAR, "-d", signer_dir, os.path.join(ROOT, "build", "Sign.java")])
     final = os.path.join(ROOT, "Group-Checkan.apk")
-    run(["java", "--add-exports=java.base/sun.security.x509=ALL-UNNAMED", "--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED", "--add-exports=java.base/sun.security.util=ALL-UNNAMED", "-cp", APKSIG_JAR + os.pathsep + signer_dir, "Sign", ks, kpass, "anwesenheit", unsigned, final])
+    run(["java", "--add-exports=java.base/sun.security.x509=ALL-UNNAMED", "--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED", "--add-exports=java.base/sun.security.util=ALL-UNNAMED", "-cp", APKSIG_JAR + os.pathsep + signer_dir, "Sign", ks, "anwesenheit", unsigned, final, RELEASE_CERT_SHA256])
     print("APK:", final, os.path.getsize(final), "bytes")
+    print("APK SHA-256:", hashlib.sha256(open(final, "rb").read()).hexdigest())
 
 
 if __name__ == "__main__":

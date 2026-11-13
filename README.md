@@ -37,7 +37,9 @@ Android-Gerät öffnen (Android 7.0 oder neuer; einmalig „Installation aus unb
   Gerätewechsel übernommen. Für den Umzug die eigene Datensicherung verwenden.
 - **Datensicherung optional mit Passwort** (AES-256-GCM, Schlüssel per PBKDF2-SHA256 mit 310.000 Runden).
 - **Alte Einträge automatisch löschen** (optional, für ausgewählte Profile): nach 1, 3, 6, 12 oder 24 Monaten.
+- **Geprüfte Updates:** Vor der Installation prüft die App Paketname, Signaturzertifikat und Versionsnummer.
 - Text-Exporte sind bewusst unverschlüsselt – beim Weitergeben auf den Empfänger achten.
+- Ausführlich: [SECURITY.md](SECURITY.md)
 
 ## Echtheit prüfen
 
@@ -79,7 +81,8 @@ Ergebnis: `Group-Checkan.apk` im Projektordner.
 **Wichtig:** Der Signaturschlüssel (`release.p12`) gehört **nicht** ins Repository und ist per `.gitignore`
 ausgeschlossen. Bewahre ihn sicher auf: Updates lassen sich nur mit demselben Schlüssel über die
 installierte App installieren – mit einem anderen Schlüssel müsste die App neu installiert werden und die
-Daten auf dem Gerät gingen verloren. Fehlt die Datei, erzeugt der Build einen neuen Schlüssel.
+Daten auf dem Gerät gingen verloren. Fehlt die Datei, bricht der Build ab. Details zu allen
+Sicherheitsmaßnahmen: [SECURITY.md](SECURITY.md).
 
 ## Hinweis & Haftungsausschluss
 
