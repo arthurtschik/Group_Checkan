@@ -1,0 +1,82 @@
+/* Group Checkan – Download-Seite.
+   Aufbau und Stil wie die Download-Seiten von Twitschik/Watschik (flach, zentriert, Dunkel/Hell nach Gerät),
+   nur mit den Farben der App (Blau statt Lila). */
+
+:root {
+  --bg: #0f131b; --surface: #1a202b; --line: #2c3443; --text: #e9edf5; --dim: #a5aec0; --faint: #8591a8;
+  --accent: #3b5bfd; --accent-light: #8fa3ff;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg: #f4f6fb; --surface: #ffffff; --line: #dfe4ee; --text: #18202f; --dim: #55607a; --faint: #6b7488; --accent-light: #3b5bfd; }
+}
+* { box-sizing: border-box; }
+html { height: 100%; }
+html, body { margin: 0; }
+body {
+  background: radial-gradient(120% 60% at 50% 0%, rgba(59, 91, 253, .4), transparent 60%), var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px 20px 20px;
+}
+main { width: 100%; max-width: 380px; text-align: center; }
+a { color: inherit; }
+.logo { width: 128px; height: 128px; border-radius: 30px; box-shadow: 0 10px 40px rgba(59, 91, 253, .5); }
+h1 { margin: 22px 0 4px; font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+.sub { margin: 0 0 30px; color: var(--dim); font-size: 15px; }
+.platform { display: block; margin-top: 6px; color: var(--faint); font-size: 13px; }
+.btn {
+  display: block; width: 100%; padding: 16px 20px; border-radius: 16px;
+  background: var(--accent); color: #fff; text-decoration: none; font-weight: 700; font-size: 17px;
+  box-shadow: 0 6px 24px rgba(59, 91, 253, .45); transition: transform .08s ease, filter .15s ease;
+}
+.btn:hover { filter: brightness(1.15); }
+.btn:active { transform: scale(.98); }
+.meta { margin: 12px 0 0; min-height: 21px; color: var(--dim); font-size: 13.5px; }
+.hint { margin: 22px 0 0; color: var(--faint); font-size: 12.5px; }
+.store {
+  display: inline-block; margin-top: 22px; padding: 9px 18px; border: 1px solid var(--line); border-radius: 22px;
+  color: var(--dim); text-decoration: none; font-size: 13.5px;
+}
+.store:hover { border-color: var(--accent-light); color: var(--text); }
+:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; border-radius: 6px; }
+
+/* „Was ist neu?“ – einklappbar, Text stammt aus den Release-Notizen */
+.news { margin-top: 20px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.news summary { cursor: pointer; padding: 11px 16px; font-size: 14px; font-weight: 700; color: var(--text); list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.news summary::-webkit-details-marker { display: none; }
+.news summary::after { content: "▾"; color: var(--dim); transition: transform .15s ease; }
+.news[open] summary::after { transform: rotate(180deg); }
+.news .news-body { padding: 0 16px 12px; color: var(--dim); font-size: 13px; line-height: 1.55; }
+.news .news-body p { margin: 0 0 8px; }
+.news .nh { margin: 12px 0 4px; color: var(--text); font-weight: 700; }
+.news .nh:first-child { margin-top: 2px; }
+.news ul { margin: 0 0 8px; padding-left: 18px; }
+.news li { margin: 0 0 6px; }
+.news strong { color: var(--text); }
+.news code { font: 12px/1.4 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; color: var(--text); background: var(--bg); padding: 1px 5px; border-radius: 5px; }
+.news a { color: var(--accent-light); }
+.news .more { display: inline-block; margin-top: 4px; font-size: 12.5px; }
+
+.legal { margin-top: 14px; text-align: left; }
+.legal details { border-top: 1px solid var(--line); padding: 8px 0; }
+.legal summary { cursor: pointer; color: var(--dim); font-size: 12px; list-style: none; text-align: center; }
+.legal summary::-webkit-details-marker { display: none; }
+.legal summary:hover { text-decoration: underline; }
+.legal .body { margin: 8px 0 4px; color: var(--faint); font-size: 12px; line-height: 1.6; }
+.legal .body h2 { margin: 12px 0 2px; color: var(--dim); font-size: 12px; }
+.legal .body p { margin: 0 0 6px; }
+footer { width: 100%; max-width: 460px; margin-top: 44px; color: var(--faint); font-size: 11.5px; line-height: 1.55; text-align: center; }
+
+/* Rechtstexte (eigene Seiten: Datenschutz, Nutzungsbedingungen) */
+body.doc { justify-content: flex-start; }
+.doc-main { width: 100%; max-width: 640px; text-align: left; }
+.back { display: inline-block; margin: 4px 0 18px; color: var(--accent-light); text-decoration: none; font-weight: 600; font-size: 14px; }
+.back:hover { text-decoration: underline; }
+.legal-doc { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 14px; font-size: 14.5px; }
+.legal-doc h1 { margin: 0 0 2px; font-size: 24px; letter-spacing: -.3px; }
+.legal-doc h3 { margin: 20px 0 4px; font-size: 15px; }
+.legal-doc p { margin: 0 0 8px; color: var(--dim); }
+.legal-doc ul { margin: 4px 0 8px; padding-left: 20px; color: var(--dim); }
+.legal-doc .hint { margin: 0 0 6px; }
